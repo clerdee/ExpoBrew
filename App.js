@@ -12,6 +12,7 @@ import HomePage from './src/screens/HomePage';
 import OrderPage from './src/screens/OrderPage';
 import StoresPage from './src/screens/StoresPage';
 import FavoritesPage from './src/screens/FavoritesPage';
+import RegisterPage from './src/screens/RegisterPage';
 // import {FavoritesScreen } from './src/screens/PlaceholderScreens';
 
 const Stack = createStackNavigator();
@@ -54,6 +55,7 @@ export default function App() {
           <Stack.Screen name="Landing" component={LandingPage} options={{ headerShown: false }} />
           <Stack.Screen name="Login" component={LoginPage} options={{ headerShown: false }} />
           <Stack.Screen name="Home" component={MainTabs} options={{ headerShown: false }} />
+          <Stack.Screen name="Register" component={RegisterPage} options={{ headerShown: false }} />
         </Stack.Navigator>
       </NavigationContainer>
     </PaperProvider>

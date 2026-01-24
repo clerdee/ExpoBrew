@@ -75,7 +75,6 @@ const LoginPage = ({ navigation }) => {
           style={styles.loginBtn}
           onPress={() => {
             console.log('Logging in...');
-            // In the future: Redux dispatch here, then:
             navigation.navigate('Home'); 
           }}
         >
@@ -99,7 +98,7 @@ const LoginPage = ({ navigation }) => {
         {/* Bottom Signup Link */}
         <View style={styles.footerRow}>
           <Text style={styles.footerText}>Don't have an account? </Text>
-          <TouchableOpacity onPress={() => console.log('Navigate to Register')}>
+          <TouchableOpacity onPress={() => navigation.navigate('Register')}>
             <Text style={styles.signupText}>Sign up</Text>
           </TouchableOpacity>
         </View>
@@ -107,6 +106,7 @@ const LoginPage = ({ navigation }) => {
     </KeyboardAvoidingView>
   );
 };
+
 
 const styles = StyleSheet.create({
   container: {

@@ -31,8 +31,8 @@ const AuthModal = ({ visible, onClose }) => {
             contentStyle={{ height: 50 }}
             labelStyle={{ fontSize: 16, fontWeight: 'bold' }}
             onPress={() => {
-              onClose(); // Close the modal first
-              navigation.navigate('Login'); // Then navigate to the Login page
+              onClose(); 
+              navigation.navigate('Login'); 
             }}
           >
             Log In
@@ -45,8 +45,8 @@ const AuthModal = ({ visible, onClose }) => {
             contentStyle={{ height: 50 }}
             labelStyle={{ fontSize: 16, fontWeight: 'bold' }}
             onPress={() => {
-              console.log('Navigate to Register Screen');
               onClose();
+              navigation.navigate('Register');
             }}
           >
             Create an Account
