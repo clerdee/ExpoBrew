@@ -178,7 +178,7 @@ const handleRegister = async () => {
           {/* Login Link */}
           <View style={styles.footerRow}>
             <Text style={styles.footerText}>Already have an account? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+            <TouchableOpacity onPress={() => navigation.replace('Login')}>
               <Text style={styles.loginText}>Log In</Text>
             </TouchableOpacity>
           </View>

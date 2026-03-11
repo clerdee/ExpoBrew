@@ -31,7 +31,7 @@ const AuthModal = ({ visible, onClose }) => {
             labelStyle={{ fontSize: 16, fontWeight: 'bold' }}
             onPress={() => {
               onClose(); 
-              navigation.navigate('Auth', { screen: 'Login' }); 
+              navigation.navigate('Auth', { screen: 'Login' });
             }}
           >
             Log In
