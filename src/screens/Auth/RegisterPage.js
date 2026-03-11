@@ -88,7 +88,6 @@ const handleRegister = async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/auth/register`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, email, password }), 
       });
       const data = await response.json();
@@ -107,8 +106,8 @@ const handleRegister = async () => {
     }
   };
 
-  // --- RESEND OTP LOGIC ---
-const handleResendOtp = async () => {
+// --- RESEND OTP LOGIC ---
+  const handleResendOtp = async () => {
     if (resendTimer > 0) return; 
     setIsResending(true);
 
@@ -134,8 +133,8 @@ const handleResendOtp = async () => {
     }
   };
 
-  // --- VERIFY OTP LOGIC ---
-const handleVerifyOtp = async () => {
+// --- STEP 2: VERIFY OTP ---
+  const handleVerifyOtp = async () => {
     if (otpCode.length !== 6) {
       Toast.show({ type: "error", text1: "Invalid Code", text2: "Enter the 6-digit code." });
       return;
@@ -160,6 +159,7 @@ const handleVerifyOtp = async () => {
         method: "POST",
         body: formData, 
       });
+      
       const data = await response.json();
 
       if (response.ok) {
