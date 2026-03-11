@@ -9,6 +9,7 @@ import Toast from 'react-native-toast-message';
 
 import UserStackNavigator from "./src/Navigators/UserStackNavigator";
 import AuthStackNavigator from "./src/Navigators/AuthStackNavigator";
+import AdminStackNavigator from "./src/Navigators/AdminStackNavigator";
 
 const Stack = createStackNavigator();
 
@@ -26,7 +27,7 @@ export default function App() {
           const userInfo = JSON.parse(userInfoString);
           
           if (userInfo.role === 'admin') {
-            setInitialRoute("Home"); 
+            setInitialRoute("AdminHome"); 
           } else {
             setInitialRoute("Home");
           }
@@ -58,6 +59,7 @@ return (
         <Stack.Navigator initialRouteName={initialRoute} screenOptions={{ headerShown: false }} >
           <Stack.Screen name="Auth" component={AuthStackNavigator} />
           <Stack.Screen name="Home" component={UserStackNavigator} />
+          <Stack.Screen name="AdminHome" component={AdminStackNavigator} />
         </Stack.Navigator>
       </NavigationContainer>
       <Toast /> 

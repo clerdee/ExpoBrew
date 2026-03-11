@@ -50,7 +50,11 @@ const LoginPage = ({ navigation }) => {
           text2: `Good to see you, ${data.user.name}!`,
         });
 
-        navigation.navigate("Home");
+        if (data.user.role === 'admin') {
+          navigation.replace('AdminHome');
+        } else {
+          navigation.replace('Home');
+        }
       } else {
         Toast.show({
           type: "error",
