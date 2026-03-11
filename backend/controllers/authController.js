@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const registerUser = async (req, res) => {
   try {
     const { name, email, password } = req.body;
+    const profileImageUrl = req.file ? req.file.path : null;
 
     const userExists = await User.findOne({ email: email });
     if (userExists) {
@@ -18,6 +19,7 @@ const registerUser = async (req, res) => {
       name: name,
       email: email,
       password: hashedPassword, 
+      profileImage: profileImageUrl
     });
 
     res.status(201).json({ 
@@ -25,7 +27,8 @@ const registerUser = async (req, res) => {
       user: {
         id: newUser._id,
         name: newUser.name,
-        email: newUser.email
+        email: newUser.email,
+        profileImage: newUser.profileImage
       }
     });
 
