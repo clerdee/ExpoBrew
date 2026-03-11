@@ -9,6 +9,7 @@ import HomePage from "../screens/Customer/HomePage";
 import OrderPage from "../screens/Customer/OrderPage";
 import StoresPage from "../screens/Customer/StoresPage";
 import FavoritesPage from "../screens/Customer/FavoritesPage";
+import ProfilePage from "../Shared/ProfilePage";
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -39,6 +40,7 @@ export default function UserStackNavigator() {
       <Tab.Screen name="Orders" component={OrderPage} />
       <Tab.Screen name="Stores" component={StoresPage} />
       <Tab.Screen name="Favorites" component={FavoritesPage} />
+      <Tab.Screen name="Profile" component={ProfilePage} />
     </Tab.Navigator>
   );
 }

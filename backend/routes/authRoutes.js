@@ -4,7 +4,7 @@ const { registerUser, loginUser, verifyOtp } = require('../controllers/authContr
 const upload = require('../config/cloudinary');
 
 router.post('/register', registerUser);
+router.post('/verify-otp', upload.single('profileImage'), verifyOtp);
 router.post('/login', loginUser);
-router.post('/verify-otp', verifyOtp);
 
 module.exports = router;

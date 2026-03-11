@@ -11,24 +11,19 @@ const ProfileModal = ({ visible, onClose, user }) => {
 
   const handleSignOut = async () => {
     try {
-      // 1. Delete the secure data
       await SecureStore.deleteItemAsync('userToken');
       await SecureStore.deleteItemAsync('userInfo');
-      
-      // 2. Close the modal
+
       onClose();
       
-      // 3. Show a nice goodbye message
       Toast.show({ type: 'success', text1: 'Signed Out', text2: 'See you next time!' });
-      
-      // 4. Force a hard reload of the Home screen to trigger Guest mode
+
       navigation.replace('Home');
     } catch (error) {
       console.error("Error signing out:", error);
     }
   };
 
-  // Reusable component for the menu rows
   const MenuRow = ({ icon, title, subtitle, onPress }) => (
     <TouchableOpacity style={styles.menuRow} onPress={onPress} activeOpacity={0.7}>
       <View style={styles.menuIconContainer}>
@@ -75,7 +70,8 @@ const ProfileModal = ({ visible, onClose, user }) => {
             icon="account-cog-outline" 
             title="Personal Details" 
             subtitle="Update your name, email, or password"
-            onPress={() => { onClose(); console.log("Navigate to Personal"); }}
+            onPress={() => { onClose(); navigation.navigate("Profile"); 
+            }}
           />
 
           {/* Sign Out Button */}
