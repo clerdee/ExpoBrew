@@ -21,6 +21,7 @@ import * as ImagePicker from "expo-image-picker";
 import Toast from "react-native-toast-message";
 
 import { API_BASE_URL } from "../../configs/config"; 
+
 const RegisterPage = ({ navigation }) => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -33,7 +34,6 @@ const RegisterPage = ({ navigation }) => {
 
   const [profileImage, setProfileImage] = useState(null);
 
-  // --- NEW OTP STATE ---
   const [isOtpModalVisible, setIsOtpModalVisible] = useState(false);
   const [otpCode, setOtpCode] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
@@ -87,7 +87,6 @@ const RegisterPage = ({ navigation }) => {
     );
   };
 
-  // --- STEP 1: SEND DATA & TRIGGER OTP MODAL ---
   const handleRegister = async () => {
     if (!name || !email || !password || !confirmPassword) {
       Toast.show({ type: "error", text1: "Wait a minute!", text2: "Please fill in all the fields." });
@@ -124,7 +123,6 @@ const RegisterPage = ({ navigation }) => {
 
       if (response.ok) {
         Toast.show({ type: "success", text1: "Code Sent!", text2: "Check your email for the OTP." });
-        // 🌟 Open the OTP Modal instead of navigating!
         setIsOtpModalVisible(true);
       } else {
         Toast.show({ type: "error", text1: "Registration Failed", text2: data.message });
@@ -137,7 +135,6 @@ const RegisterPage = ({ navigation }) => {
     }
   };
 
-  // --- STEP 2: VERIFY OTP ---
   const handleVerifyOtp = async () => {
     if (otpCode.length !== 6) {
       Toast.show({ type: "error", text1: "Invalid Code", text2: "Please enter the 6-digit code." });
@@ -159,7 +156,6 @@ const RegisterPage = ({ navigation }) => {
         setIsOtpModalVisible(false);
         Toast.show({ type: "success", text1: "Welcome to Brew!", text2: "Account verified successfully." });
         
-        // 🌟 Navigate using replace to keep a flat navigation history
         navigation.replace("Login");
       } else {
         Toast.show({ type: "error", text1: "Verification Failed", text2: data.message });
@@ -212,7 +208,7 @@ const RegisterPage = ({ navigation }) => {
             {isLoading ? "Creating Account..." : "Create Account"}
           </Button>
 
-          {/* --- NEW SOCIAL LOGIN UI --- */}
+          {/* --- SOCIAL LOGIN UI --- */}
           <View style={styles.dividerRow}>
             <View style={styles.line} />
             <Text style={styles.orText}>OR</Text>
@@ -241,38 +237,41 @@ const RegisterPage = ({ navigation }) => {
         </View>
       </ScrollView>
 
-      {/* --- OTP BOTTOM SHEET MODAL --- */}
-      <Modal animationType="slide" transparent={true} visible={isOtpModalVisible} onRequestClose={() => setIsOtpModalVisible(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalSheet}>
-            <IconButton icon="close" size={24} onPress={() => setIsOtpModalVisible(false)} style={styles.closeModalBtn} />
-            
-            <View style={styles.modalIconCircle}>
-              <MaterialCommunityIcons name="email-check-outline" size={40} color="#6F4E37" />
+      {/* --- FLOATING OTP MODAL --- */}
+      <Modal animationType="fade" transparent={true} visible={isOtpModalVisible} onRequestClose={() => setIsOtpModalVisible(false)}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalFloating}>
+              <IconButton icon="close" size={24} onPress={() => setIsOtpModalVisible(false)} style={styles.closeModalBtn} />
+              
+              <View style={styles.modalIconCircle}>
+                <MaterialCommunityIcons name="email-check-outline" size={40} color="#6F4E37" />
+              </View>
+
+              <Text variant="titleLarge" style={styles.modalTitle}>Check your Email</Text>
+              <Text variant="bodyMedium" style={styles.modalSubtitle}>
+                We sent a 6-digit verification code to{"\n"}
+                <Text style={{fontWeight: 'bold', color: '#4A3B32'}}>{email}</Text>
+              </Text>
+
+              <TextInput 
+                mode="outlined" 
+                label="6-Digit Code" 
+                value={otpCode} 
+                onChangeText={setOtpCode} 
+                keyboardType="number-pad" 
+                maxLength={6} 
+                outlineColor="#EBE1D7" 
+                activeOutlineColor="#6F4E37" 
+                style={styles.otpInput} 
+              />
+
+              <Button mode="contained" buttonColor="#6F4E37" style={styles.verifyBtn} contentStyle={{ height: 50 }} labelStyle={{ fontSize: 16, fontWeight: 'bold' }} onPress={handleVerifyOtp} loading={isVerifying} disabled={isVerifying}>
+                {isVerifying ? "Verifying..." : "Verify & Create Account"}
+              </Button>
             </View>
-
-            <Text variant="headlineSmall" style={styles.modalTitle}>Check your Email</Text>
-            <Text variant="bodyMedium" style={styles.modalSubtitle}>
-              We sent a 6-digit verification code to <Text style={{fontWeight: 'bold', color: '#4A3B32'}}>{email}</Text>
-            </Text>
-
-            <TextInput 
-              mode="outlined" 
-              label="6-Digit Code" 
-              value={otpCode} 
-              onChangeText={setOtpCode} 
-              keyboardType="number-pad" 
-              maxLength={6} 
-              outlineColor="#EBE1D7" 
-              activeOutlineColor="#6F4E37" 
-              style={styles.otpInput} 
-            />
-
-            <Button mode="contained" buttonColor="#6F4E37" style={styles.verifyBtn} contentStyle={{ height: 50 }} labelStyle={{ fontSize: 16, fontWeight: 'bold' }} onPress={handleVerifyOtp} loading={isVerifying} disabled={isVerifying}>
-              {isVerifying ? "Verifying..." : "Verify & Create Account"}
-            </Button>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
     </KeyboardAvoidingView>
@@ -299,7 +298,6 @@ const styles = StyleSheet.create({
   registerBtnContent: { height: 55 },
   registerBtnLabel: { fontSize: 16, fontWeight: "bold" },
 
-  // --- Social Auth Styles ---
   dividerRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 25 },
   line: { flex: 1, height: 1, backgroundColor: '#EBE1D7' },
   orText: { marginHorizontal: 15, color: '#888', fontWeight: 'bold' },
@@ -311,10 +309,10 @@ const styles = StyleSheet.create({
   footerText: { color: "#666" },
   loginText: { color: "#6F4E37", fontWeight: "bold" },
 
-  // --- Modal Styles ---
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  modalSheet: { backgroundColor: '#FAF5F0', borderTopLeftRadius: 30, borderTopRightRadius: 30, paddingHorizontal: 25, paddingBottom: 40, paddingTop: 10, alignItems: 'center', elevation: 10, shadowColor: '#000', shadowOffset: { width: 0, height: -2 }, shadowOpacity: 0.1, shadowRadius: 5 },
-  closeModalBtn: { alignSelf: 'flex-end', marginRight: -10 },
+  // --- FLOATING MODAL STYLES ---
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', paddingHorizontal: 20 },
+  modalFloating: { backgroundColor: '#FAF5F0', borderRadius: 25, paddingHorizontal: 25, paddingBottom: 30, paddingTop: 10, alignItems: 'center', elevation: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 5 },
+  closeModalBtn: { alignSelf: 'flex-end', margin: 0, marginRight: -15 },
   modalIconCircle: { backgroundColor: '#EBE1D7', width: 80, height: 80, borderRadius: 40, justifyContent: 'center', alignItems: 'center', marginBottom: 15 },
   modalTitle: { fontWeight: 'bold', color: '#4A3B32', marginBottom: 10 },
   modalSubtitle: { color: '#666', textAlign: 'center', marginBottom: 25, lineHeight: 22 },
