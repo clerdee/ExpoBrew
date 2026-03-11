@@ -17,7 +17,7 @@ const LandingPage = () => {
     <View style={styles.container}>
       {/* Ensure coffee-logo.png is in your assets folder */}
       <Image 
-        source={require('../../assets/coffee-logo.png')} 
+        source={require('../../../assets/coffee-logo.png')} 
         style={styles.logo}
         resizeMode="contain" 
       />
