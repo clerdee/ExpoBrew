@@ -70,7 +70,7 @@ const RegisterPage = ({ navigation }) => {
     });
   };
 
-  const handleRegister = async () => {
+const handleRegister = async () => {
     if (!name || !email || !password || !confirmPassword) {
       Toast.show({ type: 'error', text1: 'Wait a minute!', text2: 'Please fill in all the fields.' });
       return;
@@ -83,16 +83,36 @@ const RegisterPage = ({ navigation }) => {
     setIsLoading(true);
 
     try {
+      const formData = new FormData();
+      formData.append('name', name);
+      formData.append('email', email);
+      formData.append('password', password);
+
+      if (profileImage) {
+        const localUri = profileImage;
+        const filename = localUri.split('/').pop();
+      
+        const match = /\.(\w+)$/.exec(filename);
+        const type = match ? `image/${match[1]}` : `image`;
+
+        formData.append('profileImage', {
+          uri: localUri,
+          name: filename,
+          type: type,
+        });
+      }
+
       const response = await fetch(`${BASE_URL}/auth/register`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password }),
+        body: formData, 
+        headers: {
+        },
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        Toast.show({ type: 'success', text1: 'Welcome to Brew!', text2: 'Account created successfully. Please log in.' });
+        Toast.show({ type: 'success', text1: 'Welcome to Brew!', text2: 'Account created successfully.' });
         navigation.navigate('Login');
       } else {
         Toast.show({ type: 'error', text1: 'Registration Failed', text2: data.message });
