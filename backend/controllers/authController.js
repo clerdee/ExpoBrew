@@ -17,30 +17,22 @@ const transporter = nodemailer.createTransport({
 const registerUser = async (req, res) => {
   try {
     const { name, email, password } = req.body;
-    const profileImageUrl = req.file ? req.file.path : null;
-    const profileImageId = req.file ? req.file.filename : null;
 
     const userExists = await User.findOne({ email: email });
-    if (userExists) {
-      return res.status(400).json({ message: "An account with this email already exists." });
-    }
+    if (userExists) return res.status(400).json({ message: "An account with this email already exists." });
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-    tempUsers.set(email, {
-      name, email, password, profileImageUrl, profileImageId, otp,
-      expires: Date.now() + 10 * 60 * 1000 
-    });
+    tempUsers.set(email, { name, email, password, otp, expires: Date.now() + 10 * 60 * 1000 });
 
     const mailOptions = {
       from: process.env.EMAIL_USER,
       to: email,
       subject: 'Verify your ExpoBrew Account',
-      html: generateOtpEmail
+      html: generateOtpEmail(otp) 
     };
 
     await transporter.sendMail(mailOptions);
-
     res.status(200).json({ message: "OTP sent to your email!" });
 
   } catch (error) {
@@ -49,20 +41,17 @@ const registerUser = async (req, res) => {
   }
 };
 
+// --- STEP 2: VERIFY OTP (AND UPLOAD IMAGE) ---
 const verifyOtp = async (req, res) => {
   try {
     const { email, otp } = req.body;
 
+    const profileImageUrl = req.file ? req.file.path : null;
+    const profileImageId = req.file ? req.file.filename : null;
+
     const tempUser = tempUsers.get(email);
-
-    if (!tempUser) {
-      return res.status(400).json({ message: "Session expired or email not found. Please register again." });
-    }
-
-    if (tempUser.otp !== otp) {
-      return res.status(400).json({ message: "Invalid OTP code." });
-    }
-
+    if (!tempUser) return res.status(400).json({ message: "Session expired or email not found. Please register again." });
+    if (tempUser.otp !== otp) return res.status(400).json({ message: "Invalid OTP code." });
     if (Date.now() > tempUser.expires) {
       tempUsers.delete(email);
       return res.status(400).json({ message: "OTP has expired. Please register again." });
@@ -75,8 +64,8 @@ const verifyOtp = async (req, res) => {
       name: tempUser.name,
       email: tempUser.email,
       password: hashedPassword, 
-      profileImage: tempUser.profileImageUrl, 
-      profileImageId: tempUser.profileImageId 
+      profileImage: profileImageUrl,
+      profileImageId: profileImageId 
     });
 
     tempUsers.delete(email);
