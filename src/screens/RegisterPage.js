@@ -68,7 +68,7 @@ const RegisterPage = ({ navigation }) => {
     );
   };
 
-  const handleRegister = async () => {
+const handleRegister = async () => {
     if (!name || !email || !password || !confirmPassword) {
       Toast.show({ type: 'error', text1: 'Wait a minute!', text2: 'Please fill in all the fields.' });
       return;
@@ -100,7 +100,7 @@ const RegisterPage = ({ navigation }) => {
         });
       }
 
-      const response = await fetch(`${BASE_URL}/auth/register`, {
+      const response = await fetch(`${API_BASE_URL}/auth/register`, {
         method: 'POST',
         body: formData, 
       });
