@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, Alert, Image } from 'react-native';
 import { Text, TextInput, Button, IconButton, Avatar } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker'; // <-- 1. IMPORT IMAGE PICKER
+import * as ImagePicker from 'expo-image-picker'; 
+
+import { BASE_URL } from '../configs/config';
 
 const RegisterPage = ({ navigation }) => {
   // --- FORM STATES ---
