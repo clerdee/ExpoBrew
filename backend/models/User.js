@@ -11,7 +11,8 @@ const userSchema = new mongoose.Schema({
     default: 'customer'         
   },
 
-  profileImage: { type: String, default: null }
+  profileImage: { type: String, default: null },
+  profileImageId: { type: String, default: null }
 }, { timestamps: true }); 
 
 module.exports = mongoose.model('User', userSchema);
