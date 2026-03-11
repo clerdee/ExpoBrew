@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, FlatList, TouchableOpacity, Image } from 'react-native';
-import { Text, Card, IconButton, Searchbar, Button, Badge } from 'react-native-paper';
+import { Text, Card, IconButton, Searchbar, Button } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import CartModal from '../components/CartModal'; 
 
 const INITIAL_FAVORITES = [
   {
@@ -31,9 +30,6 @@ const INITIAL_FAVORITES = [
 const FavoritesPage = () => {
   const [favorites, setFavorites] = useState(INITIAL_FAVORITES);
   const [searchQuery, setSearchQuery] = useState('');
-
-  const [isCartVisible, setIsCartVisible] = useState(false);
-  const cartItemCount = 2;
 
   const removeFavorite = (id) => {
     setFavorites(prev => prev.filter(item => item.id !== id));
@@ -65,7 +61,6 @@ const FavoritesPage = () => {
             style={styles.addToCartBtn} 
             onPress={() => {
               console.log('Added to cart');
-              setIsCartVisible(true); 
             }}
           >
             <MaterialCommunityIcons name="basket-plus" size={20} color="#fff" />
@@ -77,24 +72,11 @@ const FavoritesPage = () => {
 
   return (
     <View style={styles.container}>
-      {/* --- 3. UPDATED PAGE HEADER WITH CART --- */}
+      {/* --- PAGE HEADER --- */}
       <View style={styles.headerContainer}>
         <View>
           <Text variant="headlineMedium" style={styles.headerTitle}>My Favorites</Text>
           <Text variant="bodyMedium" style={styles.headerSubtitle}>Your go-to orders, just a tap away.</Text>
-        </View>
-
-        {/* Cart Icon */}
-        <View style={styles.iconContainer}>
-          <IconButton 
-            icon="basket-outline" 
-            size={24} 
-            iconColor="#4A3B32" 
-            onPress={() => setIsCartVisible(true)} 
-          />
-          {cartItemCount > 0 && (
-            <Badge style={styles.cartBadge} size={16}>{cartItemCount}</Badge>
-          )}
         </View>
       </View>
 
@@ -127,9 +109,6 @@ const FavoritesPage = () => {
           </View>
         }
       />
-
-      {/* --- 4. CART MODAL --- */}
-      <CartModal visible={isCartVisible} onClose={() => setIsCartVisible(false)} />
     </View>
   );
 };
@@ -155,17 +134,6 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     color: '#888',
     marginTop: 5,
-  },
-  iconContainer: {
-    position: 'relative',
-  },
-  cartBadge: {
-    position: 'absolute',
-    top: 5,
-    right: 5,
-    backgroundColor: '#6F4E37',
-    color: '#fff',
-    fontWeight: 'bold',
   },
 
   searchContainer: {

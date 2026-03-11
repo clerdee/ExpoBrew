@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
-import { Text, Card, Button, Divider, IconButton, Badge } from 'react-native-paper';
+import { Text, Card, Button, Divider, IconButton } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import CartModal from '../components/CartModal';
 
 // --- DUMMY DATA ---
 const ACTIVE_ORDERS = [
@@ -34,10 +33,6 @@ const PAST_ORDERS = [
 
 const OrderPage = () => {
   const [activeTab, setActiveTab] = useState('Active'); 
-
-  // --- CART STATE ---
-  const [isCartVisible, setIsCartVisible] = useState(false);
-  const cartItemCount = 2; // Placeholder until Redux is added
 
   // --- RENDER ORDER CARD ---
   const renderOrderItem = ({ item }) => {
@@ -111,25 +106,13 @@ const OrderPage = () => {
 
   return (
     <View style={styles.container}>
-      {/* --- UPDATED PAGE HEADER WITH CART --- */}
+      {/* --- PAGE HEADER --- */}
       <View style={styles.headerContainer}>
         <Text variant="headlineMedium" style={styles.headerTitle}>My Orders</Text>
         
-        {/* Search and Cart Icons Container */}
+        {/* Search Icon Container */}
         <View style={styles.headerRight}>
           <IconButton icon="magnify" size={24} iconColor="#4A3B32" />
-          
-          <View style={styles.iconContainer}>
-            <IconButton 
-              icon="basket-outline" 
-              size={24} 
-              iconColor="#4A3B32" 
-              onPress={() => setIsCartVisible(true)} 
-            />
-            {cartItemCount > 0 && (
-              <Badge style={styles.cartBadge} size={16}>{cartItemCount}</Badge>
-            )}
-          </View>
         </View>
       </View>
 
@@ -164,9 +147,6 @@ const OrderPage = () => {
           </View>
         }
       />
-
-      {/* --- CART MODAL --- */}
-      <CartModal visible={isCartVisible} onClose={() => setIsCartVisible(false)} />
     </View>
   );
 };
@@ -188,22 +168,9 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#4A3B32',
   },
-  
-  // --- NEW HEADER CART STYLES ---
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  iconContainer: {
-    position: 'relative',
-  },
-  cartBadge: {
-    position: 'absolute',
-    top: 5,
-    right: 5,
-    backgroundColor: '#6F4E37',
-    color: '#fff',
-    fontWeight: 'bold',
   },
 
   // --- TABS ---
