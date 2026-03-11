@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { View, StyleSheet, FlatList, ScrollView, TouchableOpacity, Dimensions } from "react-native";
-import { Text, Searchbar, Card } from "react-native-paper";
-import * as SecureStore from 'expo-secure-store'; 
+import { Text, Card } from "react-native-paper";
+import * as SecureStore from 'expo-secure-store';
 
 import CardComponent from "../components/CardComponent";
 import CartModal from "../components/CartModal";
@@ -17,10 +17,8 @@ const COFFEE_MENU = [
 ];
 
 const { width } = Dimensions.get("window");
-const CARD_WIDTH = width / 2 - 25;
 
 const HomePage = () => {
-  const [searchQuery, setSearchQuery] = useState("");
   const [isCartVisible, setIsCartVisible] = useState(false);
   const [isAuthModalVisible, setIsAuthModalVisible] = useState(false);
   
@@ -58,15 +56,6 @@ const HomePage = () => {
         onAvatarPress={handleAvatarClick}
         onCartPress={() => setIsCartVisible(true)}
         onNotificationPress={() => console.log("Notifications clicked!")}
-      />
-
-      <Searchbar
-        placeholder="Search products..."
-        onChangeText={setSearchQuery}
-        value={searchQuery}
-        style={styles.searchBar}
-        iconColor="#6F4E37"
-        inputStyle={{ fontSize: 14 }}
       />
 
       <Text variant="titleMedium" style={styles.sectionTitle}>Daily discounts</Text>
@@ -112,7 +101,6 @@ const HomePage = () => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#FAF5F0", paddingTop: 50 },
   listContent: { paddingHorizontal: 20, paddingBottom: 100 },
-  searchBar: { backgroundColor: "#fff", borderRadius: 15, marginBottom: 20, height: 50, elevation: 0, borderWidth: 1, borderColor: "#EFEFEF" },
   sectionTitle: { fontWeight: "bold", color: "#4A3B32", marginBottom: 12, marginTop: 5 },
   bannerCard: { marginBottom: 25, borderRadius: 15, overflow: "hidden", height: 140, justifyContent: "center" },
   bannerImage: { height: 140 },
