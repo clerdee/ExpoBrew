@@ -10,10 +10,7 @@ const Stack = createStackNavigator();
 
 export default function AuthStackNavigator() {
   return (
-    <Stack.Navigator
-      screenOptions={{ headerShown: false }}
-      initialRouteName="Landing"
-    >
+    <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName="Landing">
       <Stack.Screen name="Landing" component={LandingPage} />
       <Stack.Screen name="Login" component={LoginPage} />
       <Stack.Screen name="Register" component={RegisterPage} />

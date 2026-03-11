@@ -2,9 +2,8 @@ import React, { useState } from 'react';
 import { View, StyleSheet, FlatList, TouchableOpacity, Image } from 'react-native';
 import { Text, Card, IconButton, Searchbar, Button, Badge } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import CartModal from '../components/CartModal'; // <-- 1. IMPORT MODAL
+import CartModal from '../components/CartModal'; 
 
-// --- DUMMY FAVORITES DATA ---
 const INITIAL_FAVORITES = [
   {
     id: '1',
@@ -33,16 +32,13 @@ const FavoritesPage = () => {
   const [favorites, setFavorites] = useState(INITIAL_FAVORITES);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // --- 2. CART STATE ---
   const [isCartVisible, setIsCartVisible] = useState(false);
-  const cartItemCount = 2; // Placeholder until Redux is added
+  const cartItemCount = 2;
 
-  // Function to remove item from favorites
   const removeFavorite = (id) => {
     setFavorites(prev => prev.filter(item => item.id !== id));
   };
 
-  // --- RENDER FAVORITE CARD ---
   const renderFavItem = ({ item }) => (
     <Card style={styles.favCard} mode="elevated">
       <View style={styles.cardRow}>
@@ -60,7 +56,7 @@ const FavoritesPage = () => {
         <View style={styles.actionColumn}>
           <IconButton 
             icon="heart" 
-            iconColor="#E74C3C" // Red for liked
+            iconColor="#E74C3C" 
             size={22} 
             onPress={() => removeFavorite(item.id)}
             style={styles.heartBtn}
@@ -69,7 +65,7 @@ const FavoritesPage = () => {
             style={styles.addToCartBtn} 
             onPress={() => {
               console.log('Added to cart');
-              setIsCartVisible(true); // Optional: Open cart when adding from favorites
+              setIsCartVisible(true); 
             }}
           >
             <MaterialCommunityIcons name="basket-plus" size={20} color="#fff" />
@@ -145,7 +141,6 @@ const styles = StyleSheet.create({
     paddingTop: 50,
   },
   
-  // --- UPDATED HEADER STYLES ---
   headerContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -185,10 +180,9 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: 20,
-    paddingBottom: 100, // Space for Bottom Tab
+    paddingBottom: 100, 
   },
 
-  // --- CARD STYLES ---
   favCard: {
     backgroundColor: '#fff',
     marginBottom: 15,
@@ -222,7 +216,7 @@ const styles = StyleSheet.create({
   },
   price: {
     fontWeight: 'bold',
-    color: '#6F4E37', // Coffee Brown
+    color: '#6F4E37', 
   },
   actionColumn: {
     justifyContent: 'space-between',
@@ -243,7 +237,6 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
 
-  // --- EMPTY STATE ---
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
