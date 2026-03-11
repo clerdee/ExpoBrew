@@ -2,6 +2,7 @@ const User = require('../models/User');
 const bcrypt = require('bcryptjs'); 
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
+const { generateOtpEmail } = require('../utils/emailTemplates');
 
 const tempUsers = new Map();
 
@@ -35,11 +36,7 @@ const registerUser = async (req, res) => {
       from: process.env.EMAIL_USER,
       to: email,
       subject: 'Verify your ExpoBrew Account',
-      html: `
-        <h2>Welcome to ExpoBrew!</h2>
-        <p>Your verification code is: <strong>${otp}</strong></p>
-        <p>This code will expire in 10 minutes.</p>
-      `
+      html: generateOtpEmail
     };
 
     await transporter.sendMail(mailOptions);
