@@ -6,6 +6,7 @@ const registerUser = async (req, res) => {
   try {
     const { name, email, password } = req.body;
     const profileImageUrl = req.file ? req.file.path : null;
+    const profileImageId = req.file ? req.file.filename : null;
 
     const userExists = await User.findOne({ email: email });
     if (userExists) {
@@ -19,7 +20,8 @@ const registerUser = async (req, res) => {
       name: name,
       email: email,
       password: hashedPassword, 
-      profileImage: profileImageUrl
+      profileImage: profileImageUrl, 
+      profileImageId: profileImageId
     });
 
     res.status(201).json({ 
