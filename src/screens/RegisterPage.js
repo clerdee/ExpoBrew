@@ -3,12 +3,11 @@ import { View, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, Scr
 import { Text, TextInput, Button, IconButton, Avatar } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker'; 
-import Toast from 'react-native-toast-message'; // <-- IMPORT TOAST
+import Toast from 'react-native-toast-message'; 
 
 import { BASE_URL } from '../configs/config';
 
 const RegisterPage = ({ navigation }) => {
-  // --- FORM STATES ---
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -153,8 +152,8 @@ const RegisterPage = ({ navigation }) => {
             contentStyle={styles.registerBtnContent} 
             labelStyle={styles.registerBtnLabel} 
             style={styles.registerBtn} 
-            onPress={handleRegister} // <-- Connects to backend!
-            loading={isLoading}      // <-- Shows spinner
+            onPress={handleRegister} 
+            loading={isLoading}      
             disabled={isLoading}
           >
             {isLoading ? "Creating Account..." : "Create Account"}
