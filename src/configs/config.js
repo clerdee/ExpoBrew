@@ -1,3 +1,3 @@
-const YOUR_IP_ADDRESS = '192.168.1.5'; 
+const LOCAL_IP = '192.168.1.24'; 
 
-export const BASE_URL = `http://${YOUR_IP_ADDRESS}:3000/api`;
+export const API_BASE_URL = `http://${LOCAL_IP}:3000/api`;
