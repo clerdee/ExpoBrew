@@ -23,7 +23,6 @@ const AuthModal = ({ visible, onClose }) => {
             Log in to track your orders, save your favorites, and earn rewards!
           </Text>
 
-          {/* 3. UPDATE THE ONPRESS FUNCTION HERE */}
           <Button 
             mode="contained" 
             buttonColor="#6F4E37" 
@@ -32,7 +31,7 @@ const AuthModal = ({ visible, onClose }) => {
             labelStyle={{ fontSize: 16, fontWeight: 'bold' }}
             onPress={() => {
               onClose(); 
-              navigation.navigate('Login'); 
+              navigation.navigate('Auth', { screen: 'Login' }); 
             }}
           >
             Log In
@@ -46,7 +45,7 @@ const AuthModal = ({ visible, onClose }) => {
             labelStyle={{ fontSize: 16, fontWeight: 'bold' }}
             onPress={() => {
               onClose();
-              navigation.navigate('Register');
+              navigation.navigate('Auth', { screen: 'Register' });
             }}
           >
             Create an Account
@@ -59,61 +58,14 @@ const AuthModal = ({ visible, onClose }) => {
 };
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'flex-end',
-  },
-  sheetContainer: {
-    backgroundColor: '#FAF5F0', // Cream
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    paddingHorizontal: 25,
-    paddingBottom: 40,
-    paddingTop: 10,
-    alignItems: 'center',
-    elevation: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-  },
-  closeBtn: {
-    alignSelf: 'flex-end',
-    marginRight: -10,
-  },
-  iconCircle: {
-    backgroundColor: '#EBE1D7',
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  title: {
-    fontWeight: 'bold',
-    color: '#4A3B32',
-    marginBottom: 10,
-  },
-  subtitle: {
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 30,
-    paddingHorizontal: 10,
-    lineHeight: 22,
-  },
-  loginBtn: {
-    width: '100%',
-    borderRadius: 12,
-    marginBottom: 15,
-  },
-  registerBtn: {
-    width: '100%',
-    borderRadius: 12,
-    borderColor: '#6F4E37',
-    borderWidth: 1.5,
-  },
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  sheetContainer: { backgroundColor: '#FAF5F0', borderTopLeftRadius: 30, borderTopRightRadius: 30, paddingHorizontal: 25, paddingBottom: 40, paddingTop: 10, alignItems: 'center', elevation: 10, shadowColor: '#000', shadowOffset: { width: 0, height: -2 }, shadowOpacity: 0.1, shadowRadius: 5 },
+  closeBtn: { alignSelf: 'flex-end', marginRight: -10 },
+  iconCircle: { backgroundColor: '#EBE1D7', width: 90, height: 90, borderRadius: 45, justifyContent: 'center', alignItems: 'center', marginBottom: 15 },
+  title: { fontWeight: 'bold', color: '#4A3B32', marginBottom: 10 },
+  subtitle: { color: '#666', textAlign: 'center', marginBottom: 30, paddingHorizontal: 10, lineHeight: 22 },
+  loginBtn: { width: '100%', borderRadius: 12, marginBottom: 15 },
+  registerBtn: { width: '100%', borderRadius: 12, borderColor: '#6F4E37', borderWidth: 1.5 },
 });
 
 export default AuthModal;
