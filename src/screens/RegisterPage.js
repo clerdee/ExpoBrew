@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
 import { Text, TextInput, Button, IconButton, Avatar } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker'; 
@@ -57,20 +57,18 @@ const RegisterPage = ({ navigation }) => {
   };
 
   const showImageOptions = () => {
-    import('react-native').then(({ Alert }) => {
-      Alert.alert(
-        "Profile Picture",
-        "Choose an option to set your profile picture",
-        [
-          { text: "Take Photo", onPress: takePhoto },
-          { text: "Choose from Gallery", onPress: pickFromGallery },
-          { text: "Cancel", style: "cancel" }
-        ]
-      );
-    });
+    Alert.alert(
+      "Profile Picture",
+      "Choose an option to set your profile picture",
+      [
+        { text: "Take Photo", onPress: takePhoto },
+        { text: "Choose from Gallery", onPress: pickFromGallery },
+        { text: "Cancel", style: "cancel" }
+      ]
+    );
   };
 
-const handleRegister = async () => {
+  const handleRegister = async () => {
     if (!name || !email || !password || !confirmPassword) {
       Toast.show({ type: 'error', text1: 'Wait a minute!', text2: 'Please fill in all the fields.' });
       return;
@@ -105,8 +103,6 @@ const handleRegister = async () => {
       const response = await fetch(`${BASE_URL}/auth/register`, {
         method: 'POST',
         body: formData, 
-        headers: {
-        },
       });
 
       const data = await response.json();
@@ -118,7 +114,7 @@ const handleRegister = async () => {
         Toast.show({ type: 'error', text1: 'Registration Failed', text2: data.message });
       }
     } catch (error) {
-      console.error(error);
+      console.error("Fetch Error:", error);
       Toast.show({ type: 'error', text1: 'Connection Error', text2: 'Could not connect to the server.' });
     } finally {
       setIsLoading(false);
