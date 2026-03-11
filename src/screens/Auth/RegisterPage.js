@@ -72,8 +72,8 @@ const RegisterPage = ({ navigation }) => {
     ]);
   };
 
-  // --- REGISTRATION LOGIC ---
-const handleRegister = async () => {
+// --- STEP 1: INITIAL REGISTER ---
+  const handleRegister = async () => {
     if (!name || !email || !password || !confirmPassword) {
       Toast.show({ type: "error", text1: "Wait!", text2: "Fill in all fields." });
       return;
@@ -86,10 +86,15 @@ const handleRegister = async () => {
     setIsLoading(true);
 
     try {
+      // 🌟 MUST BE PURE JSON AND HAVE THIS EXACT HEADER! 🌟
       const response = await fetch(`${API_BASE_URL}/auth/register`, {
         method: "POST",
-        body: JSON.stringify({ name, email, password }), 
+        headers: { 
+          "Content-Type": "application/json" // <- This tells express.json() to wake up!
+        },
+        body: JSON.stringify({ name, email, password }), // <- No FormData here!
       });
+      
       const data = await response.json();
 
       if (response.ok) {
@@ -103,33 +108,6 @@ const handleRegister = async () => {
       Toast.show({ type: "error", text1: "Error", text2: "Could not connect to server." });
     } finally {
       setIsLoading(false);
-    }
-  };
-
-// --- RESEND OTP LOGIC ---
-  const handleResendOtp = async () => {
-    if (resendTimer > 0) return; 
-    setIsResending(true);
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/auth/register`, { 
-        method: "POST", 
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password }) 
-      });
-      
-      if (response.ok) {
-        Toast.show({ type: "success", text1: "Sent!", text2: "Check your email again." });
-        setOtpCode(""); 
-        setResendTimer(30); 
-      } else {
-        const data = await response.json();
-        Toast.show({ type: "error", text1: "Failed", text2: data.message });
-      }
-    } catch (error) {
-      Toast.show({ type: "error", text1: "Error", text2: "Server connection failed." });
-    } finally {
-      setIsResending(false);
     }
   };
 
@@ -173,6 +151,35 @@ const handleRegister = async () => {
       Toast.show({ type: "error", text1: "Error", text2: "Server connection failed." });
     } finally {
       setIsVerifying(false);
+    }
+  };
+
+// --- RESEND OTP LOGIC ---
+  const handleResendOtp = async () => {
+    if (resendTimer > 0) return; 
+    setIsResending(true);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/register`, { 
+        method: "POST", 
+        headers: { 
+          "Content-Type": "application/json" 
+        },
+        body: JSON.stringify({ name, email, password }) 
+      });
+      
+      if (response.ok) {
+        Toast.show({ type: "success", text1: "Sent!", text2: "Check your email again." });
+        setOtpCode(""); 
+        setResendTimer(30); 
+      } else {
+        const data = await response.json();
+        Toast.show({ type: "error", text1: "Failed", text2: data.message });
+      }
+    } catch (error) {
+      Toast.show({ type: "error", text1: "Error", text2: "Server connection failed." });
+    } finally {
+      setIsResending(false);
     }
   };
 
