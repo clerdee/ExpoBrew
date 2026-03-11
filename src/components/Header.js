@@ -1,12 +1,13 @@
 import React from "react";
 import { View, StyleSheet, TouchableOpacity } from "react-native";
-import { Text, IconButton, Avatar, Badge } from "react-native-paper";
+import { Text, IconButton, Avatar, Badge, Button } from "react-native-paper";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 const Header = ({ 
-  user,      
+  user,              
   cartItemCount = 0, 
-  onAvatarPress,  
-  onCartPress,     
+  onAvatarPress,     
+  onCartPress,       
   onNotificationPress
 }) => {
   
@@ -14,65 +15,53 @@ const Header = ({
 
   return (
     <View style={styles.header}>
-      {/* LEFT SIDE: Avatar & Greeting */}
-      <TouchableOpacity
-        style={styles.headerLeft}
-        activeOpacity={0.7}
-        onPress={onAvatarPress}
-      >
-        {isLoggedIn && user.profileImage ? (
-          <Avatar.Image
-            size={40}
-            source={{ uri: user.profileImage }}
-            style={styles.avatarLogged}
-          />
-        ) : (
-          <Avatar.Icon
-            size={40}
-            icon="account"
-            color="#fff"
-            style={styles.avatarGuest}
-          />
-        )}
-
-        <View style={styles.headerTextContainer}>
-          <Text variant="bodyMedium" style={styles.greetingText}>
-            {isLoggedIn ? "Good Morning," : "Welcome,"}
+      {/* --- GUEST MODE HEADER --- */}
+      {!isLoggedIn ? (
+        <View style={styles.headerLeft}>
+          <Text variant="titleLarge" style={styles.starbucksGreeting}>
+            It's a great day for coffee ☕️
           </Text>
-          <Text variant="headlineSmall" style={styles.username}>
-            {/* 🌟 Show real name, or "Guest" */}
-            {isLoggedIn ? user.name : "Guest"}
-          </Text>
+          <TouchableOpacity 
+            style={styles.signInButton} 
+            onPress={onAvatarPress} 
+            activeOpacity={0.7}
+          >
+            <MaterialCommunityIcons name="login" size={16} color="#6F4E37" />
+            <Text style={styles.signInText}>Sign In</Text>
+          </TouchableOpacity>
         </View>
-      </TouchableOpacity>
+      ) : (
 
-      {/* RIGHT SIDE: Icons */}
+        <TouchableOpacity
+          style={styles.headerLeft}
+          activeOpacity={0.7}
+          onPress={onAvatarPress}
+        >
+          {user.profileImage ? (
+            <Avatar.Image size={40} source={{ uri: user.profileImage }} style={styles.avatarLogged} />
+          ) : (
+            <Avatar.Icon size={40} icon="account" color="#fff" style={styles.avatarGuest} />
+          )}
+          <View style={styles.headerTextContainer}>
+            <Text variant="bodyMedium" style={styles.greetingText}>Good Morning,</Text>
+            <Text variant="headlineSmall" style={styles.username}>{user.name}</Text>
+          </View>
+        </TouchableOpacity>
+      )}
+
+      {/* --- RIGHT SIDE: ICONS --- */}
       <View style={styles.headerRight}>
-        {/* Only show Notifications if logged in */}
         {isLoggedIn && (
           <View style={styles.iconContainer}>
-            <IconButton
-              icon="bell-outline"
-              size={24}
-              iconColor="#4A3B32"
-              onPress={onNotificationPress}
-            />
+            <IconButton icon="bell-outline" size={24} iconColor="#4A3B32" onPress={onNotificationPress} />
             <View style={styles.notificationDot} />
           </View>
         )}
 
-        {/* Cart Icon */}
         <View style={styles.iconContainer}>
-          <IconButton
-            icon="basket-outline"
-            size={24}
-            iconColor="#4A3B32"
-            onPress={onCartPress}
-          />
+          <IconButton icon="basket-outline" size={24} iconColor="#4A3B32" onPress={onCartPress} />
           {cartItemCount > 0 && (
-            <Badge style={styles.cartBadge} size={16}>
-              {cartItemCount}
-            </Badge>
+            <Badge style={styles.cartBadge} size={16}>{cartItemCount}</Badge>
           )}
         </View>
       </View>
@@ -81,13 +70,19 @@ const Header = ({
 };
 
 const styles = StyleSheet.create({
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 },
-  headerLeft: { flexDirection: "row", alignItems: "center" },
+  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 },
+  headerLeft: { flex: 1, paddingRight: 10 },
+  
+  starbucksGreeting: { fontWeight: "900", color: "#4A3B32", marginBottom: 8, lineHeight: 28 },
+  signInButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#EBE1D7', paddingHorizontal: 15, paddingVertical: 6, borderRadius: 20, alignSelf: 'flex-start' },
+  signInText: { color: '#6F4E37', fontWeight: 'bold', marginLeft: 5, fontSize: 13 },
+
   avatarLogged: { backgroundColor: "#EFEFEF" },
   avatarGuest: { backgroundColor: "#A0A0A0" },
-  headerTextContainer: { marginLeft: 10 },
+  headerTextContainer: { marginLeft: 10, marginTop: -4 },
   greetingText: { color: "#888" },
   username: { fontWeight: "bold", color: "#4A3B32", fontSize: 18 },
+  
   headerRight: { flexDirection: "row", alignItems: "center" },
   iconContainer: { position: "relative", marginLeft: 5 },
   notificationDot: { position: "absolute", top: 8, right: 12, width: 8, height: 8, borderRadius: 4, backgroundColor: "#E74C3C" },

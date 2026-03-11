@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { View, StyleSheet, FlatList, ScrollView, TouchableOpacity, Dimensions } from "react-native";
 import { Text, Searchbar, Card } from "react-native-paper";
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store'; 
 
 import CardComponent from "../components/CardComponent";
 import CartModal from "../components/CartModal";
@@ -29,9 +29,9 @@ const HomePage = () => {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const userInfoString = await AsyncStorage.getItem('userInfo');
+        const userInfoString = await SecureStore.getItemAsync('userInfo');
         if (userInfoString) {
-          setCurrentUser(JSON.parse(userInfoString)); 
+          setCurrentUser(JSON.parse(userInfoString));
         }
       } catch (error) {
         console.error("Error fetching user data:", error);
@@ -52,7 +52,6 @@ const HomePage = () => {
 
   const renderHeader = () => (
     <View>
-      {/* 🌟 DROP THE SMART HEADER IN! 🌟 */}
       <Header 
         user={currentUser} 
         cartItemCount={cartItemCount}
@@ -70,7 +69,6 @@ const HomePage = () => {
         inputStyle={{ fontSize: 14 }}
       />
 
-      {/* ... (Keep your Banner and Categories exactly as they are) ... */}
       <Text variant="titleMedium" style={styles.sectionTitle}>Daily discounts</Text>
       <Card style={styles.bannerCard}>
         <Card.Cover source={{ uri: "https://images.unsplash.com/photo-1559339352-11d035aa65de?w=800&q=80" }} style={styles.bannerImage} />

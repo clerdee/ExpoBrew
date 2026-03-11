@@ -3,6 +3,7 @@ import { View, ActivityIndicator, StyleSheet } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import { Provider as PaperProvider } from "react-native-paper";
+import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage'; 
 import Toast from 'react-native-toast-message'; 
 
@@ -18,8 +19,8 @@ export default function App() {
   useEffect(() => {
     const checkUserStatus = async () => {
       try {
-        const userToken = await AsyncStorage.getItem('userToken');
-        const userInfoString = await AsyncStorage.getItem('userInfo');
+        const userToken = await SecureStore.getItemAsync('userToken');
+        const userInfoString = await SecureStore.getItemAsync('userInfo');
 
         if (userToken && userInfoString) {
           const userInfo = JSON.parse(userInfoString);
@@ -51,25 +52,14 @@ export default function App() {
     );
   }
 
-  return (
+return (
     <PaperProvider>
       <NavigationContainer>
-        <Stack.Navigator
-          initialRouteName={initialRoute}
-          screenOptions={{ headerShown: false }}
-        >
-          {/* Guest / Auth Zone */}
+        <Stack.Navigator initialRouteName={initialRoute} screenOptions={{ headerShown: false }} >
           <Stack.Screen name="Auth" component={AuthStackNavigator} />
-          
-          {/* Main Store / Customer Zone */}
           <Stack.Screen name="Home" component={UserStackNavigator} />
-
-          {/* Admin Zone */}
-          {/* <Stack.Screen name="AdminHome" component={AdminStackNavigator} /> */}
-          
         </Stack.Navigator>
       </NavigationContainer>
-
       <Toast /> 
     </PaperProvider>
   );

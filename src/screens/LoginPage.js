@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text, TextInput, Button, IconButton } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store'; 
 import Toast from 'react-native-toast-message';
 
 import { API_BASE_URL } from '../configs/config'; 
@@ -31,8 +31,8 @@ const LoginPage = ({ navigation }) => {
       const data = await response.json();
 
       if (response.ok) {
-        await AsyncStorage.setItem('userToken', data.token);
-        await AsyncStorage.setItem('userInfo', JSON.stringify(data.user));
+        await SecureStore.setItemAsync('userToken', data.token);
+        await SecureStore.setItemAsync('userInfo', JSON.stringify(data.user));
 
         Toast.show({ type: 'success', text1: 'Welcome back!', text2: `Good to see you, ${data.user.name}!` });
 
@@ -53,13 +53,11 @@ const LoginPage = ({ navigation }) => {
       style={styles.container} 
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      {/* Back Button */}
       <View style={styles.header}>
         <IconButton icon="arrow-left" size={24} iconColor="#4A3B32" onPress={() => navigation.goBack()} style={styles.backBtn} />
       </View>
 
       <View style={styles.content}>
-        {/* Logo or Icon */}
         <View style={styles.logoContainer}>
           <MaterialCommunityIcons name="coffee" size={60} color="#6F4E37" />
         </View>
@@ -67,17 +65,14 @@ const LoginPage = ({ navigation }) => {
         <Text variant="displaySmall" style={styles.title}>Welcome Back</Text>
         <Text variant="bodyMedium" style={styles.subtitle}>Log in to continue your coffee journey.</Text>
 
-        {/* Form Inputs */}
         <TextInput label="Email Address" value={email} onChangeText={setEmail} mode="outlined" keyboardType="email-address" autoCapitalize="none" left={<TextInput.Icon icon="email-outline" color="#888" />} outlineColor="#EBE1D7" activeOutlineColor="#6F4E37" style={styles.input} />
         
         <TextInput label="Password" value={password} onChangeText={setPassword} secureTextEntry={isPasswordSecure} mode="outlined" left={<TextInput.Icon icon="lock-outline" color="#888" />} right={<TextInput.Icon icon={isPasswordSecure ? "eye-off" : "eye"} onPress={() => setIsPasswordSecure(!isPasswordSecure)} color="#888" />} outlineColor="#EBE1D7" activeOutlineColor="#6F4E37" style={styles.input} />
 
-        {/* Forgot Password Link */}
         <TouchableOpacity style={styles.forgotPasswordContainer}>
           <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
         </TouchableOpacity>
 
-        {/* Login Button */}
         <Button 
           mode="contained" 
           buttonColor="#6F4E37" 
@@ -91,7 +86,6 @@ const LoginPage = ({ navigation }) => {
           {isLoading ? "Logging in..." : "Log In"}
         </Button>
 
-        {/* Register Link */}
         <View style={styles.footerRow}>
           <Text style={styles.footerText}>Don't have an account? </Text>
           <TouchableOpacity onPress={() => navigation.navigate('Register')}>
