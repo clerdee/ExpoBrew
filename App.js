@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import Toast from 'react-native-toast-message';
 import { View, ActivityIndicator, StyleSheet } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
@@ -68,6 +69,7 @@ export default function App() {
           
         </Stack.Navigator>
       </NavigationContainer>
+      <Toast />
     </PaperProvider>
   );
 }
