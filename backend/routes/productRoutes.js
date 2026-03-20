@@ -17,7 +17,7 @@ const { protect, admin } = require('../middleware/authMiddleware');
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
-    folder: 'expobrew_products', 
+    folder: 'ExpoBrew/Products', 
     allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
   },
 });
