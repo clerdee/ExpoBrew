@@ -5,6 +5,7 @@ require('dotenv').config();
 
 // Import our routes
 const authRoutes = require('./routes/authRoutes'); 
+const productRoutes = require('./routes/productRoutes');
 
 const app = express();
 
@@ -21,6 +22,7 @@ mongoose.connect(process.env.MONGO_URI)
   .catch((err) => console.log("❌ MongoDB connection error:", err));
 
 app.use('/api/auth', authRoutes);
+app.use('/api/products', productRoutes);
 
 const PORT = process.env.PORT || 3000;
 
