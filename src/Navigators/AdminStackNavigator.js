@@ -7,6 +7,7 @@ import Toast from 'react-native-toast-message';
 
 import Dashboard from "../screens/Admin/Dashboard";
 import Products from "../screens/Admin/Products";
+import Users from '../screens/Admin/Users';
 
 const Drawer = createDrawerNavigator();
 
@@ -62,7 +63,7 @@ export default function AdminStackNavigator() {
     <Drawer.Navigator initialRouteName="Dashboard" drawerContent={(props) => <CustomDrawerContent {...props} />} screenOptions={{ headerShown: false, drawerStyle: { backgroundColor: '#FAFAFA', width: 280 }, drawerActiveBackgroundColor: "#4A2E1B", drawerActiveTintColor: "#FFF", drawerInactiveTintColor: "#555", drawerLabelStyle: { fontSize: 15, fontWeight: "600", marginLeft: -10 }, drawerItemStyle: { borderRadius: 12, paddingHorizontal: 5, marginVertical: 4 } }}>
       <Drawer.Screen name="Dashboard" component={Dashboard} options={{ drawerIcon: ({ color }) => <MaterialCommunityIcons name="view-dashboard" size={22} color={color} /> }} />
       <Drawer.Screen name="Products" component={Products} options={{ drawerIcon: ({ color }) => <MaterialCommunityIcons name="coffee" size={22} color={color} /> }} />
-      <Drawer.Screen name="Users" component={Dashboard} options={{ drawerIcon: ({ color }) => <MaterialCommunityIcons name="account-group" size={22} color={color} /> }} />
+      <Drawer.Screen name="Users" component={Users} options={{ drawerIcon: ({ color }) => <MaterialCommunityIcons name="account-group" size={22} color={color} /> }} />
       <Drawer.Screen name="Orders" component={Dashboard} options={{ drawerIcon: ({ color }) => <MaterialCommunityIcons name="clipboard-list" size={22} color={color} /> }} />
       <Drawer.Screen name="Settings" component={Dashboard} options={{ drawerIcon: ({ color }) => <MaterialCommunityIcons name="cog" size={22} color={color} /> }} />
     </Drawer.Navigator>
