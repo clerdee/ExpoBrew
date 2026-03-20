@@ -1,5 +1,5 @@
-import React from "react";
-import { View, Alert } from "react-native";
+import React, { useState, useEffect } from "react";
+import { View, Text, StyleSheet, Alert, ActivityIndicator } from "react-native";
 import { 
   createDrawerNavigator, 
   DrawerContentScrollView, 
@@ -14,6 +14,26 @@ import Dashboard from "../screens/Admin/Dashboard";
 const Drawer = createDrawerNavigator();
 
 function CustomDrawerContent(props) {
+  const [adminInfo, setAdminInfo] = useState({ name: 'Loading...', email: '' });
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const userInfoString = await SecureStore.getItemAsync('userInfo');
+        if (userInfoString) {
+          const userInfo = JSON.parse(userInfoString);
+          setAdminInfo({
+            name: userInfo.name || 'Admin User',
+            email: userInfo.email || 'admin@expobrew.com'
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching admin details:", error);
+      }
+    };
+    fetchUserData();
+  }, []);
+
   const handleLogout = () => {
     Alert.alert("Log Out", "Are you sure you want to log out?", [
       { text: "Cancel", style: "cancel" },
@@ -24,7 +44,6 @@ function CustomDrawerContent(props) {
           try {
             await SecureStore.deleteItemAsync('userToken');
             await SecureStore.deleteItemAsync('userInfo');
-            
             props.navigation.reset({
               index: 0,
               routes: [{ name: 'Auth' }],
@@ -38,36 +57,65 @@ function CustomDrawerContent(props) {
   };
 
   return (
-    <DrawerContentScrollView {...props} contentContainerStyle={{ flex: 1, justifyContent: 'space-between' }}>
-      {/* Top section: Renders all the Drawer.Screen items automatically */}
-      <View>
-        <DrawerItemList {...props} />
-      </View>
+    <View style={{ flex: 1 }}>
+      <DrawerContentScrollView {...props} contentContainerStyle={{ paddingTop: 0 }}>
+        
+        {/* --- 1. Admin Profile Header --- */}
+        <View style={styles.drawerHeader}>
+          <View style={styles.profileImageContainer}>
+            <MaterialCommunityIcons name="account-tie" size={45} color="#4A2E1B" />
+          </View>
+          <Text style={styles.adminName}>{adminInfo.name}</Text>
+          <Text style={styles.adminEmail}>{adminInfo.email}</Text>
+          <View style={styles.badgeContainer}>
+            <Text style={styles.badgeText}>Administrator</Text>
+          </View>
+        </View>
 
-      {/* Bottom section: Custom Log Out Button */}
-      <View style={{ paddingBottom: 20, borderTopWidth: 1, borderTopColor: '#E0E0E0' }}>
+        {/* --- 2. Navigation Items --- */}
+        <View style={styles.drawerItemsContainer}>
+          <DrawerItemList {...props} />
+        </View>
+
+      </DrawerContentScrollView>
+
+      {/* --- 3. Bottom Section (Log Out) --- */}
+      <View style={styles.bottomSection}>
         <DrawerItem
           label="Log Out"
           icon={({ color }) => <MaterialCommunityIcons name="logout" size={24} color="#D32F2F" />}
-          labelStyle={{ color: '#D32F2F', fontSize: 16, fontWeight: "bold" }}
+          labelStyle={{ color: '#D32F2F', fontSize: 16, fontWeight: "600", marginLeft: -15 }}
           onPress={handleLogout}
         />
       </View>
-    </DrawerContentScrollView>
+    </View>
   );
 }
 
 export default function AdminStackNavigator() {
   return (
     <Drawer.Navigator
-      initialRouteName="Dashboard" 
-      drawerContent={(props) => <CustomDrawerContent {...props} />} 
+      initialRouteName="Dashboard"
+      drawerContent={(props) => <CustomDrawerContent {...props} />}
       screenOptions={{
         headerShown: false,
+        drawerStyle: {
+          backgroundColor: '#FAFAFA', 
+          width: 280,
+        },
         drawerActiveBackgroundColor: "#4A2E1B",
         drawerActiveTintColor: "#FFF",
-        drawerInactiveTintColor: "#333",
-        drawerLabelStyle: { fontSize: 16, fontWeight: "bold" },
+        drawerInactiveTintColor: "#555",
+        drawerLabelStyle: { 
+          fontSize: 15, 
+          fontWeight: "600",
+          marginLeft: -10, 
+        },
+        drawerItemStyle: {
+          borderRadius: 12, 
+          paddingHorizontal: 5,
+          marginVertical: 4,
+        }
       }}
     >
       <Drawer.Screen
@@ -75,7 +123,7 @@ export default function AdminStackNavigator() {
         component={Dashboard}
         options={{
           drawerIcon: ({ color }) => (
-            <MaterialCommunityIcons name="view-dashboard-outline" size={24} color={color} />
+            <MaterialCommunityIcons name="view-dashboard" size={22} color={color} />
           ),
         }}
       />
@@ -85,7 +133,7 @@ export default function AdminStackNavigator() {
         component={Dashboard} 
         options={{
           drawerIcon: ({ color }) => (
-            <MaterialCommunityIcons name="coffee-outline" size={24} color={color} />
+            <MaterialCommunityIcons name="coffee" size={22} color={color} />
           ),
         }}
       />
@@ -95,20 +143,91 @@ export default function AdminStackNavigator() {
         component={Dashboard} 
         options={{
           drawerIcon: ({ color }) => (
-            <MaterialCommunityIcons name="account-group-outline" size={24} color={color} />
+            <MaterialCommunityIcons name="account-group" size={22} color={color} />
           ),
         }}
       />
       
       <Drawer.Screen
         name="Orders"
+        component={Dashboard}
+        options={{
+          drawerIcon: ({ color }) => (
+            <MaterialCommunityIcons name="clipboard-list" size={22} color={color} />
+          ),
+        }}
+      />
+
+      <Drawer.Screen
+        name="Settings"
         component={Dashboard} 
         options={{
           drawerIcon: ({ color }) => (
-            <MaterialCommunityIcons name="clipboard-list-outline" size={24} color={color} />
+            <MaterialCommunityIcons name="cog" size={22} color={color} />
           ),
         }}
       />
     </Drawer.Navigator>
   );
 }
+
+const styles = StyleSheet.create({
+  drawerHeader: {
+    backgroundColor: '#4A2E1B',
+    paddingTop: 60, 
+    paddingBottom: 30,
+    paddingHorizontal: 20,
+    borderBottomRightRadius: 30,
+    marginBottom: 15,
+  },
+  profileImageContainer: {
+    width: 70,
+    height: 70,
+    backgroundColor: '#FFF',
+    borderRadius: 35,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 15,
+    elevation: 5,
+    shadowColor: '#000', 
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  adminName: {
+    color: '#FFF',
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginBottom: 2,
+  },
+  adminEmail: {
+    color: '#D3C4B7',
+    fontSize: 14,
+    marginBottom: 12,
+  },
+  badgeContainer: {
+    backgroundColor: '#D4AF37', 
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 15,
+    alignSelf: 'flex-start', 
+  },
+  badgeText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  drawerItemsContainer: {
+    paddingHorizontal: 10,
+  },
+  bottomSection: {
+    paddingBottom: 30,
+    paddingTop: 10,
+    paddingHorizontal: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0',
+    backgroundColor: '#FAFAFA',
+  }
+});
