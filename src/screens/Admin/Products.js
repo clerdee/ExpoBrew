@@ -51,16 +51,19 @@ export default function Products({ navigation }) {
         <View style={styles.cardContent}>
           <Image source={{ uri: i.imageUrl || i.image || 'https://via.placeholder.com/100?text=No' }} style={styles.img} />
           <View style={styles.info}>
-            <Text style={styles.name} numberOfLines={1}>{i.name}</Text>
-            <Text style={styles.price}>₱{Number(i.price).toFixed(2)}</Text>
+            <View style={styles.titleRow}>
+              <Text style={styles.name} numberOfLines={2}>{i.name}</Text>
+              <Text style={styles.price}>₱{Number(i.price).toFixed(2)}</Text>
+            </View>
             <Text style={styles.cat}>{i.category || 'Uncategorized'}</Text>
-            <Chip icon={out?"close-circle":"check-circle"} textStyle={{fontSize:10, color:'#FFF'}} style={[styles.badge, {backgroundColor: out?'#D32F2F':'#388E3C'}]} compact>
-              {out ? 'Out of Stock' : `${i.countInStock} in stock`}
+            {i.description && <Text style={styles.desc} numberOfLines={2}>{i.description}</Text>}
+            <Chip icon={out?"close-circle":"check-circle"} textStyle={{fontSize: 12, fontWeight: 'bold', color: '#FFF'}} style={[styles.badge, {backgroundColor: out?'#D32F2F':'#388E3C'}]} compact>
+              {out ? 'Out of Stock' : `${i.countInStock} In Stock`}
             </Chip>
           </View>
           <View style={styles.actions}>
-            <IconButton icon="pencil-outline" size={20} iconColor="#4A2E1B" containerColor="#F5F5F5" onPress={() => openModal(i)} />
-            <IconButton icon="trash-can-outline" size={20} iconColor="#D32F2F" containerColor="#FEEBEE" onPress={() => handleDelete(i._id)} />
+            <IconButton icon="pencil-outline" size={20} iconColor="#4A2E1B" containerColor="#F5F5F5" onPress={() => openModal(i)} style={styles.actionBtn} />
+            <IconButton icon="trash-can-outline" size={20} iconColor="#D32F2F" containerColor="#FEEBEE" onPress={() => handleDelete(i._id)} style={styles.actionBtn} />
           </View>
         </View>
       </Card>
@@ -111,10 +114,11 @@ const styles = StyleSheet.create({
   filters: { paddingHorizontal: 20, marginTop: 15, marginBottom: 5 }, filterTitle: { fontSize: 12, fontWeight: '700', color: '#A0A0A0', textTransform: 'uppercase', marginBottom: 6 },
   scroll: { marginBottom: 12 }, chip: { marginRight: 8, borderRadius: 20, paddingHorizontal: 4, height: 34, justifyContent: 'center' },
   chipOn: { backgroundColor: '#4A2E1B' }, chipOff: { backgroundColor: '#EAEAEA' }, textOn: { color: '#FFF', fontWeight: 'bold', fontSize: 13 }, textOff: { color: '#666', fontWeight: '600', fontSize: 13 },
-  loader: { flex: 1, justifyContent: 'center' }, list: { paddingHorizontal: 20, paddingBottom: 20, paddingTop: 5 }, card: { marginBottom: 12, backgroundColor: '#FFF', borderRadius: 15 },
-  cardContent: { flexDirection: 'row', alignItems: 'center', padding: 12 }, img: { width: 80, height: 80, borderRadius: 10, backgroundColor: '#E0E0E0' },
-  info: { flex: 1, marginLeft: 15, justifyContent: 'center' }, name: { fontSize: 16, fontWeight: 'bold', color: '#333', marginBottom: 2 },
-  price: { fontSize: 15, color: '#6F4E37', fontWeight: '600', marginBottom: 2 }, cat: { fontSize: 12, color: '#888', fontStyle: 'italic', marginBottom: 6 },
-  badge: { alignSelf: 'flex-start', height: 22 }, actions: { flexDirection: 'column', justifyContent: 'space-between', marginLeft: 10 },
+  loader: { flex: 1, justifyContent: 'center' }, list: { paddingHorizontal: 20, paddingBottom: 20, paddingTop: 5 }, card: { marginBottom: 14, backgroundColor: '#FFF', borderRadius: 15 },
+  cardContent: { flexDirection: 'row', padding: 12 }, img: { width: 100, height: 100, borderRadius: 10, backgroundColor: '#E0E0E0', marginTop: 4 },
+  info: { flex: 1, marginLeft: 15, justifyContent: 'flex-start' }, titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 2 }, 
+  name: { fontSize: 16, fontWeight: 'bold', color: '#333', flex: 1, marginRight: 8, lineHeight: 20 }, price: { fontSize: 16, color: '#6F4E37', fontWeight: '800' }, 
+  cat: { fontSize: 12, color: '#888', fontStyle: 'italic', marginBottom: 4 }, desc: { fontSize: 13, color: '#444', marginBottom: 10, lineHeight: 18 },
+  badge: { alignSelf: 'flex-start', marginTop: 'auto', paddingHorizontal: 4 }, actions: { flexDirection: 'column', justifyContent: 'space-around', marginLeft: 8 }, actionBtn: { margin: 0 },
   empty: { alignItems: 'center', marginTop: 60 }, emptyText: { color: '#888', fontSize: 16, marginTop: 10, fontWeight: '500' }
 });
