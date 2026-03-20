@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Image, Platform, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { Portal, Modal, Text, TextInput, Button, Menu } from 'react-native-paper';
 import * as ImagePicker from 'expo-image-picker';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
@@ -11,14 +11,14 @@ import { API_BASE_URL } from '../../configs/config';
 const CATEGORIES = ['Brewed', 'Espresso', 'Frappuccino', 'Refreshers', 'Non-Coffee', 'Tea'];
 
 export default function AddProduct({ visible, onClose, product, onSuccess }) {
-  const [formData, setFormData] = useState({ name: '', description: '', price: '', category: CATEGORIES[0] });
+  const [formData, setFormData] = useState({ name: '', description: '', price: '', countInStock: '', category: CATEGORIES[0] });
   const [imageUri, setImageUri] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [showDropDown, setShowDropDown] = useState(false); // Controls the new dropdown menu
+  const [showDropDown, setShowDropDown] = useState(false);
 
   useEffect(() => {
-    if (product) { setFormData({ name: product.name, description: product.description, price: product.price.toString(), category: product.category || CATEGORIES[0] }); setImageUri(product.imageUrl || product.image || null); } 
-    else { setFormData({ name: '', description: '', price: '', category: CATEGORIES[0] }); setImageUri(null); setShowDropDown(false); }
+    if (product) { setFormData({ name: product.name, description: product.description, price: product.price.toString(), countInStock: product.countInStock?.toString() || '0', category: product.category || CATEGORIES[0] }); setImageUri(product.imageUrl || product.image || null); } 
+    else { setFormData({ name: '', description: '', price: '', countInStock: '', category: CATEGORIES[0] }); setImageUri(null); setShowDropDown(false); }
   }, [product, visible]);
 
   const pickImage = async (useCamera = false) => {
@@ -29,12 +29,12 @@ export default function AddProduct({ visible, onClose, product, onSuccess }) {
   };
 
   const handleSave = async () => {
-    if (!formData.name || !formData.price) return Toast.show({ type: 'error', text1: 'Name and Price required' });
+    if (!formData.name || !formData.price || !formData.countInStock) return Toast.show({ type: 'error', text1: 'Name, Price, and Stock are required' });
     setLoading(true);
     try {
       const token = await SecureStore.getItemAsync('userToken');
       const data = new FormData();
-      data.append('name', formData.name); data.append('description', formData.description); data.append('price', formData.price); data.append('category', formData.category);
+      data.append('name', formData.name); data.append('description', formData.description); data.append('price', formData.price); data.append('countInStock', formData.countInStock); data.append('category', formData.category);
       if (imageUri && !imageUri.startsWith('http')) {
         const filename = imageUri.split('/').pop();
         const match = /\.(\w+)$/.exec(filename);
@@ -67,21 +67,17 @@ export default function AddProduct({ visible, onClose, product, onSuccess }) {
           
           <View style={styles.row}>
             <TextInput label="Price (₱)" value={formData.price} onChangeText={(text) => setFormData({ ...formData, price: text })} style={[styles.input, { flex: 1, marginRight: 8 }]} mode="outlined" keyboardType="numeric" activeOutlineColor="#4A2E1B" left={<TextInput.Affix text="₱" />} />
-            
-            {/* New True Dropdown Menu */}
-            <View style={{ flex: 1.2, marginLeft: 8 }}>
-              <Menu visible={showDropDown} onDismiss={() => setShowDropDown(false)} anchor={
-                <TouchableOpacity onPress={() => setShowDropDown(true)}>
-                  <View pointerEvents="none">
-                    <TextInput label="Category" value={formData.category} style={styles.input} mode="outlined" activeOutlineColor="#4A2E1B" right={<TextInput.Icon icon="menu-down" />} editable={false} />
-                  </View>
-                </TouchableOpacity>
-              }>
-                {CATEGORIES.map(cat => (
-                  <Menu.Item key={cat} onPress={() => { setFormData({ ...formData, category: cat }); setShowDropDown(false); }} title={cat} titleStyle={{ color: formData.category === cat ? '#4A2E1B' : '#333', fontWeight: formData.category === cat ? 'bold' : 'normal' }} />
-                ))}
-              </Menu>
-            </View>
+            <TextInput label="Stock Qty" value={formData.countInStock} onChangeText={(text) => setFormData({ ...formData, countInStock: text })} style={[styles.input, { flex: 1, marginLeft: 8 }]} mode="outlined" keyboardType="numeric" activeOutlineColor="#4A2E1B" />
+          </View>
+
+          <View style={{ marginBottom: 12 }}>
+            <Menu visible={showDropDown} onDismiss={() => setShowDropDown(false)} anchor={
+              <TouchableOpacity onPress={() => setShowDropDown(true)}>
+                <View pointerEvents="none"><TextInput label="Category" value={formData.category} style={styles.input} mode="outlined" activeOutlineColor="#4A2E1B" right={<TextInput.Icon icon="menu-down" />} editable={false} /></View>
+              </TouchableOpacity>
+            }>
+              {CATEGORIES.map(cat => ( <Menu.Item key={cat} onPress={() => { setFormData({ ...formData, category: cat }); setShowDropDown(false); }} title={cat} titleStyle={{ color: formData.category === cat ? '#4A2E1B' : '#333', fontWeight: formData.category === cat ? 'bold' : 'normal' }} /> ))}
+            </Menu>
           </View>
 
           <View style={styles.modalActions}>
@@ -104,6 +100,6 @@ const styles = StyleSheet.create({
   imgBtn: { borderColor: '#4A2E1B', flex: 1 },
   input: { marginBottom: 12, backgroundColor: '#FFF' },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  modalActions: { flexDirection: 'row', marginTop: 10, gap: 10 },
+  modalActions: { flexDirection: 'row', marginTop: 5, gap: 10 },
   saveButton: { flex: 1, borderRadius: 8, paddingVertical: 4 }
 });
