@@ -10,7 +10,7 @@ export default function CardComponent({ item, onAddToCart, onFavorite, isFavorit
     <Card style={styles.card} mode="elevated">
       <View style={styles.imgContainer}>
         <Card.Cover source={{ uri: item.imageUrl || item.image || 'https://via.placeholder.com/150?text=No+Image' }} style={styles.img} />
-        <TouchableOpacity style={styles.favBtn} onPress={() => onFavorite && onFavorite(item)}>
+        <TouchableOpacity activeOpacity={0.7} style={styles.favBtn} onPress={() => onFavorite && onFavorite(item)}>
           <MaterialCommunityIcons name={isFavorite ? "heart" : "heart-outline"} size={20} color={isFavorite ? "#E74C3C" : "#666"} />
         </TouchableOpacity>
       </View>
@@ -19,7 +19,7 @@ export default function CardComponent({ item, onAddToCart, onFavorite, isFavorit
         <Text variant="bodySmall" numberOfLines={1} style={styles.desc}>{item.description}</Text>
         <View style={styles.priceRow}>
           <Text variant="titleMedium" style={styles.price}>₱{Number(item.price).toFixed(2)}</Text>
-          <TouchableOpacity style={styles.addBtn} onPress={() => onAddToCart && onAddToCart(item)}>
+          <TouchableOpacity activeOpacity={0.8} style={styles.addBtn} onPress={() => onAddToCart && onAddToCart(item)}>
             <MaterialCommunityIcons name="plus" size={20} color="#fff" />
           </TouchableOpacity>
         </View>
@@ -32,7 +32,7 @@ const styles = StyleSheet.create({
   card: { width: width / 2 - 25, marginBottom: 15, backgroundColor: "#fff", borderRadius: 15, elevation: 2 },
   imgContainer: { padding: 8, position: 'relative' }, 
   img: { height: 120, borderRadius: 12, backgroundColor: "#f0f0f0" },
-  favBtn: { position: 'absolute', top: 15, right: 15, backgroundColor: 'rgba(255,255,255,0.8)', borderRadius: 15, width: 30, height: 30, justifyContent: 'center', alignItems: 'center', elevation: 3 },
+  favBtn: { position: 'absolute', top: 15, right: 15, backgroundColor: 'rgba(255,255,255,0.9)', borderRadius: 15, width: 30, height: 30, justifyContent: 'center', alignItems: 'center', elevation: 3 },
   content: { paddingHorizontal: 12, paddingBottom: 15, paddingTop: 5 },
   name: { fontWeight: "bold", fontSize: 15, color: "#333", marginBottom: 2 },
   desc: { fontSize: 11, color: "#999", marginBottom: 10 },

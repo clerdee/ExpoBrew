@@ -9,18 +9,15 @@ import CartModal from "../../components/CartModal";
 import AuthModal from "../../components/AuthModal";
 import Header from "../../components/Header";
 import ProfileModal from "../../components/ProfileModal";
+import CustomizeDrinkModal from "../../components/CustomizeDrinkModal";
 
 const CATEGORIES = ['All', 'Brewed', 'Espresso', 'Frappuccino', 'Refreshers', 'Non-Coffee', 'Tea'];
 
 export default function HomePage() {
-  const [cartVis, setCartVis] = useState(false);
-  const [authVis, setAuthVis] = useState(false);
-  const [profVis, setProfVis] = useState(false);
-  const [user, setUser] = useState(null);
-  const [products, setProducts] = useState([]);
-  const [cartItems, setCartItems] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [activeCat, setActiveCat] = useState('All');
+  const [cartVis, setCartVis] = useState(false), [authVis, setAuthVis] = useState(false), [profVis, setProfVis] = useState(false);
+  const [custVis, setCustVis] = useState(false), [user, setUser] = useState(null), [products, setProducts] = useState([]);
+  const [cartItems, setCartItems] = useState([]), [selectedItem, setSelectedItem] = useState(null);
+  const [loading, setLoading] = useState(true), [activeCat, setActiveCat] = useState('All');
 
   useEffect(() => {
     (async () => {
@@ -32,12 +29,12 @@ export default function HomePage() {
     })();
   }, []);
 
-  const addToCart = (p) => {
-    setCartItems(prev => {
-      const exist = prev.find(i => i._id === p._id);
-      return exist ? prev.map(i => i._id === p._id ? { ...i, qty: i.qty + 1 } : i) : [...prev, { ...p, qty: 1 }];
-    });
-    setCartVis(true);
+  const handleAddPress = (p) => { setSelectedItem(p); setCustVis(true); };
+
+  const confirmCustomization = (customized) => {
+    const uniqueId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+    setCartItems(prev => [...prev, { ...customized, qty: 1, cartId: uniqueId }]);
+    setCustVis(false); setCartVis(true);
   };
 
   const filtered = useMemo(() => products.filter(p => activeCat === 'All' || p.category === activeCat), [products, activeCat]);
@@ -50,7 +47,7 @@ export default function HomePage() {
       <Card style={styles.banner}>
         <Card.Cover source={{ uri: "https://images.unsplash.com/photo-1559339352-11d035aa65de?w=800&q=80" }} style={styles.bannerImg} />
         <View style={styles.bannerOver}><Text style={styles.bTitle}>SALE</Text><Text style={styles.bSub}>UP TO 50% OFF</Text>
-          <View style={styles.bBtn}><Text style={{ fontWeight: "bold", fontSize: 10, color: "#4A3B32" }}>ORDER NOW</Text></View>
+          <View style={styles.bBtn}><Text style={{fontWeight:"bold", fontSize:10, color:"#4A3B32"}}>ORDER NOW</Text></View>
         </View>
       </Card>
       <Text variant="titleMedium" style={styles.secTitle}>Categories</Text>
@@ -67,8 +64,9 @@ export default function HomePage() {
   return (
     <View style={styles.container}>
       {loading ? <ActivityIndicator size="large" color="#6F4E37" style={{ flex: 1 }} /> : (
-        <FlatList data={filtered} renderItem={({ item }) => <CardComponent item={item} onAddToCart={() => addToCart(item)} />} keyExtractor={i => i._id.toString()} numColumns={2} columnWrapperStyle={styles.colWrap} ListHeaderComponent={renderHeader} contentContainerStyle={styles.list} />
+        <FlatList data={filtered} renderItem={({ item }) => <CardComponent item={item} onAddToCart={() => handleAddPress(item)} />} keyExtractor={i => i._id.toString()} numColumns={2} columnWrapperStyle={styles.colWrap} ListHeaderComponent={renderHeader} contentContainerStyle={styles.list} showsVerticalScrollIndicator={false} />
       )}
+      <CustomizeDrinkModal visible={custVis} onClose={() => setCustVis(false)} item={selectedItem} onConfirm={confirmCustomization} />
       <CartModal visible={cartVis} onClose={() => setCartVis(false)} cartItems={cartItems} setCartItems={setCartItems} />
       <AuthModal visible={authVis} onClose={() => setAuthVis(false)} />
       <ProfileModal visible={profVis} onClose={() => setProfVis(false)} user={user} />
