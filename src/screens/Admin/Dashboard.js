@@ -1,15 +1,15 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import Toast from 'react-native-toast-message';
-import { API_BASE_URL } from '../../configs/config'; 
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-const AdminHomePage = ({ navigation }) => {
+const Dashboard = ({ navigation }) => {
 
   const showDevToast = (moduleName) => {
     Toast.show({
       type: 'info',
       text1: 'Coming Soon',
-      text2: `The ${moduleName} management module is under construction.`,
+      text2: `The ${moduleName} module is under construction.`,
       position: 'top'
     });
   };
@@ -17,15 +17,25 @@ const AdminHomePage = ({ navigation }) => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Admin Dashboard</Text>
-        <Text style={styles.headerSubtitle}>Manage your ExpoBrew systems</Text>
+        {/* Hamburger Menu Button */}
+        <TouchableOpacity 
+          style={styles.menuButton} 
+          onPress={() => navigation.toggleDrawer()}
+        >
+          <MaterialCommunityIcons name="menu" size={28} color="#FFFFFF" />
+        </TouchableOpacity>
+
+        <View>
+          <Text style={styles.headerTitle}>Admin Dashboard</Text>
+          <Text style={styles.headerSubtitle}>Manage your ExpoBrew systems</Text>
+        </View>
       </View>
 
       <View style={styles.grid}>
         {/* Products Management */}
         <TouchableOpacity 
           style={styles.card} 
-          onPress={() => Toast.show({ type: 'success', text1: 'Routing to Products...' })} 
+          onPress={() => navigation.navigate('Products')} 
         >
           <Text style={styles.icon}>☕</Text>
           <Text style={styles.cardTitle}>Manage Products</Text>
@@ -34,7 +44,7 @@ const AdminHomePage = ({ navigation }) => {
         {/* Users Management */}
         <TouchableOpacity 
           style={styles.card} 
-          onPress={() => showDevToast('Users')}
+          onPress={() => navigation.navigate('Users')}
         >
           <Text style={styles.icon}>👥</Text>
           <Text style={styles.cardTitle}>Manage Users</Text>
@@ -43,7 +53,7 @@ const AdminHomePage = ({ navigation }) => {
         {/* Orders Management */}
         <TouchableOpacity 
           style={styles.card} 
-          onPress={() => showDevToast('Orders')}
+          onPress={() => navigation.navigate('Orders')}
         >
           <Text style={styles.icon}>📦</Text>
           <Text style={styles.cardTitle}>Manage Orders</Text>
@@ -74,16 +84,21 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
     marginBottom: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  menuButton: {
+    marginRight: 15,
   },
   headerTitle: { 
-    fontSize: 28, 
+    fontSize: 24, 
     fontWeight: 'bold', 
     color: '#FFFFFF' 
   },
   headerSubtitle: {
     fontSize: 14,
     color: '#D3C4B7',
-    marginTop: 5
+    marginTop: 2
   },
   grid: {
     flexDirection: 'row',
@@ -118,4 +133,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default AdminHomePage;
+export default Dashboard;
