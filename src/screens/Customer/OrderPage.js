@@ -1,104 +1,67 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
-import { Text, Card, Button, Divider, IconButton } from 'react-native-paper';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, StyleSheet, FlatList, TouchableOpacity, RefreshControl } from 'react-native';
+import { Text, Card, Button, Divider, IconButton, ActivityIndicator } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import axios from 'axios';
+import * as SecureStore from 'expo-secure-store';
+import { API_BASE_URL } from '../../configs/config';
 
-// --- DUMMY DATA ---
-const ACTIVE_ORDERS = [
-  {
-    id: '#10045',
-    date: 'Today, 09:15 AM',
-    items: '1x Mochaccino, 1x Brownie Cake',
-    total: '$8.80',
-    status: 'Preparing', 
-  },
-];
+export default function OrderPage({ navigation }) {
+  const [activeTab, setActiveTab] = useState('Active');
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-const PAST_ORDERS = [
-  {
-    id: '#10044',
-    date: 'Jan 22, 08:30 AM',
-    items: '2x Iced Americano, 1x Sweet Lemon',
-    total: '$10.50',
-    status: 'Completed',
-  },
-  {
-    id: '#10038',
-    date: 'Jan 20, 07:45 AM',
-    items: '1x Fruity Summer, 1x Caramel Macchiato',
-    total: '$12.10',
-    status: 'Completed',
-  },
-];
+  const fetchOrders = useCallback(async () => {
+    try {
+      const token = await SecureStore.getItemAsync('userToken');
+      // ENSURE THIS URL MATCHES YOUR BACKEND ROUTE EXACTLY
+      const { data } = await axios.get(`${API_BASE_URL}/orders/myorders`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setOrders(data);
+    } catch (e) { console.error("Order fetch error:", e); } 
+    finally { setLoading(false); setRefreshing(false); }
+  }, []);
 
-const OrderPage = () => {
-  const [activeTab, setActiveTab] = useState('Active'); 
+  useEffect(() => { fetchOrders(); }, [fetchOrders]);
 
-  // --- RENDER ORDER CARD ---
-  const renderOrderItem = ({ item }) => {
-    const isPreparing = item.status === 'Preparing';
-    const isReady = item.status === 'Ready';
+  const filtered = orders.filter(o => 
+    activeTab === 'Active' ? ['Pending', 'Preparing', 'Ready'].includes(o.status) : o.status === 'Completed'
+  );
 
-    // Status Colors
-    let statusColor = '#6F4E37'; // Completed (Brown)
-    let statusIcon = 'check-circle';
-
-    if (isPreparing) {
-      statusColor = '#E67E22'; // Orange
-      statusIcon = 'coffee-maker';
-    } else if (isReady) {
-      statusColor = '#27AE60'; // Green
-      statusIcon = 'check-decagram';
-    }
+  const renderOrder = ({ item: o }) => {
+    const config = {
+      Pending: { color: '#F1C40F', icon: 'clock-outline' },
+      Preparing: { color: '#E67E22', icon: 'coffee-maker' },
+      Ready: { color: '#27AE60', icon: 'check-decagram' },
+      Completed: { color: '#6F4E37', icon: 'check-circle' }
+    }[o.status] || { color: '#888', icon: 'help-circle' };
 
     return (
-      <Card style={styles.orderCard} mode="elevated">
+      <Card style={styles.card} mode="elevated">
         <Card.Content>
-          {/* Header: Order ID and Status */}
-          <View style={styles.cardHeader}>
+          <View style={styles.row}>
             <View>
-              <Text variant="titleMedium" style={styles.orderId}>Order {item.id}</Text>
-              <Text variant="bodySmall" style={styles.orderDate}>{item.date}</Text>
+              <Text style={styles.id}>Order #{o._id.slice(-6).toUpperCase()}</Text>
+              <Text style={styles.date}>{new Date(o.createdAt).toLocaleDateString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'})}</Text>
             </View>
-            <View style={[styles.statusBadge, { backgroundColor: statusColor + '15' }]}>
-              <MaterialCommunityIcons name={statusIcon} size={14} color={statusColor} style={{ marginRight: 4 }} />
-              <Text style={[styles.statusText, { color: statusColor }]}>{item.status}</Text>
+            <View style={[styles.badge, { backgroundColor: config.color + '15' }]}>
+              <MaterialCommunityIcons name={config.icon} size={14} color={config.color} />
+              <Text style={[styles.status, { color: config.color }]}>{o.status}</Text>
             </View>
           </View>
-
-          <Divider style={styles.divider} />
-
-          {/* Body: Items and Price */}
-          <View style={styles.cardBody}>
-            <View style={styles.itemContainer}>
-              <MaterialCommunityIcons name="shopping-outline" size={16} color="#888" style={{ marginRight: 6 }} />
-              <Text variant="bodyMedium" numberOfLines={1} style={styles.orderItems}>{item.items}</Text>
+          <Divider style={styles.div} />
+          <View style={styles.row}>
+            <View style={styles.itemsWrap}>
+              <MaterialCommunityIcons name="shopping-outline" size={16} color="#888" />
+              <Text numberOfLines={1} style={styles.items}>{o.orderItems.map(i => `${i.qty}x ${i.name}`).join(', ')}</Text>
             </View>
-            <Text variant="titleMedium" style={styles.orderTotal}>{item.total}</Text>
+            <Text style={styles.total}>₱{o.totalPrice.toFixed(2)}</Text>
           </View>
-
-          {/* Footer: Actions */}
-          <View style={styles.cardFooter}>
-            {activeTab === 'Active' ? (
-              <Button 
-                mode="contained" 
-                style={styles.actionButton}
-                buttonColor="#6F4E37"
-                onPress={() => console.log('Track Order')}
-              >
-                Track Order
-              </Button>
-            ) : (
-              <Button 
-                mode="outlined" 
-                style={styles.reorderButton}
-                textColor="#6F4E37"
-                onPress={() => console.log('Reorder items')}
-              >
-                Reorder
-              </Button>
-            )}
-          </View>
+          <Button mode={activeTab==='Active'?"contained":"outlined"} style={styles.btn} buttonColor={activeTab==='Active'?"#6F4E37":null} textColor={activeTab==='History'?"#6F4E37":"#FFF"} onPress={()=>{}}>
+            {activeTab === 'Active' ? 'Track Order' : 'Reorder'}
+          </Button>
         </Card.Content>
       </Card>
     );
@@ -106,186 +69,42 @@ const OrderPage = () => {
 
   return (
     <View style={styles.container}>
-      {/* --- PAGE HEADER --- */}
-      <View style={styles.headerContainer}>
-        <Text variant="headlineMedium" style={styles.headerTitle}>My Orders</Text>
-        
-        {/* Search Icon Container */}
-        <View style={styles.headerRight}>
-          <IconButton icon="magnify" size={24} iconColor="#4A3B32" />
-        </View>
+      <View style={styles.header}><Text style={styles.hTitle}>My Orders</Text><IconButton icon="magnify" size={24} iconColor="#4A3B32" /></View>
+      <View style={styles.tabs}>{['Active', 'History'].map(t => (
+        <TouchableOpacity key={t} style={[styles.tab, activeTab===t && styles.activeTab]} onPress={()=>setActiveTab(t)}>
+          <Text style={[styles.tabTxt, activeTab===t && styles.activeTabTxt]}>{t}</Text>
+        </TouchableOpacity>))}
       </View>
-
-      {/* --- CUSTOM TABS --- */}
-      <View style={styles.tabContainer}>
-        <TouchableOpacity 
-          style={[styles.tab, activeTab === 'Active' && styles.activeTab]}
-          onPress={() => setActiveTab('Active')}
-        >
-          <Text style={[styles.tabText, activeTab === 'Active' && styles.activeTabText]}>Active</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={[styles.tab, activeTab === 'History' && styles.activeTab]}
-          onPress={() => setActiveTab('History')}
-        >
-          <Text style={[styles.tabText, activeTab === 'History' && styles.activeTabText]}>History</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* --- ORDER LIST --- */}
-      <FlatList
-        data={activeTab === 'Active' ? ACTIVE_ORDERS : PAST_ORDERS}
-        renderItem={renderOrderItem}
-        keyExtractor={item => item.id}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <MaterialCommunityIcons name="coffee-off-outline" size={60} color="#CCC" />
-            <Text style={styles.emptyText}>No {activeTab.toLowerCase()} orders right now.</Text>
-          </View>
-        }
-      />
+      {loading ? <ActivityIndicator style={{flex:1}} color="#6F4E37" /> : (
+        <FlatList data={filtered} renderItem={renderOrder} keyExtractor={i=>i._id} contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={()=>{setRefreshing(true); fetchOrders();}} />}
+          ListEmptyComponent={<View style={styles.empty}><MaterialCommunityIcons name="coffee-off-outline" size={64} color="#CCC" /><Text style={styles.emptyTxt}>No {activeTab.toLowerCase()} orders.</Text></View>} />
+      )}
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FAF5F0', 
-    paddingTop: 50,
-  },
-  headerContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    marginBottom: 10,
-  },
-  headerTitle: {
-    fontWeight: 'bold',
-    color: '#4A3B32',
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-
-  // --- TABS ---
-  tabContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#EBE1D7',
-    marginHorizontal: 20,
-    borderRadius: 10,
-    padding: 4,
-    marginBottom: 20,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 10,
-    alignItems: 'center',
-    borderRadius: 8,
-  },
-  activeTab: {
-    backgroundColor: '#fff',
-    elevation: 2, 
-  },
-  tabText: {
-    fontWeight: '600',
-    color: '#888',
-  },
-  activeTabText: {
-    color: '#6F4E37', 
-    fontWeight: 'bold',
-  },
-
-  // --- LIST CONTENT ---
-  listContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 100, 
-  },
-
-  // --- ORDER CARD ---
-  orderCard: {
-    backgroundColor: '#fff',
-    marginBottom: 15,
-    borderRadius: 15,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  orderId: {
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  orderDate: {
-    color: '#888',
-    marginTop: 2,
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  statusText: {
-    fontWeight: 'bold',
-    fontSize: 12,
-  },
-  divider: {
-    marginVertical: 12,
-    backgroundColor: '#F0F0F0',
-  },
-  cardBody: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  itemContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    marginRight: 10,
-  },
-  orderItems: {
-    color: '#555',
-    flexShrink: 1,
-  },
-  orderTotal: {
-    fontWeight: 'bold',
-    color: '#6F4E37',
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-  },
-  actionButton: {
-    borderRadius: 8,
-    width: '100%',
-  },
-  reorderButton: {
-    borderColor: '#6F4E37',
-    borderRadius: 8,
-    width: '100%',
-  },
-
-  // --- EMPTY STATE ---
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 60,
-  },
-  emptyText: {
-    marginTop: 10,
-    color: '#888',
-    fontSize: 16,
-  },
+  container: { flex: 1, backgroundColor: '#FAF5F0', paddingTop: 50 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 10 },
+  hTitle: { fontSize: 24, fontWeight: 'bold', color: '#4A3B32' },
+  tabs: { flexDirection: 'row', backgroundColor: '#EBE1D7', marginHorizontal: 20, borderRadius: 12, padding: 4, marginBottom: 20 },
+  tab: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 10 },
+  activeTab: { backgroundColor: '#fff', elevation: 3 },
+  tabTxt: { fontWeight: '600', color: '#888' },
+  activeTabTxt: { color: '#6F4E37', fontWeight: 'bold' },
+  list: { paddingHorizontal: 20, paddingBottom: 40 },
+  card: { backgroundColor: '#fff', marginBottom: 16, borderRadius: 16 },
+  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  id: { fontWeight: '800', color: '#333', fontSize: 15 },
+  date: { color: '#999', fontSize: 12, marginTop: 2 },
+  badge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, gap: 4 },
+  status: { fontWeight: 'bold', fontSize: 11 },
+  div: { marginVertical: 12, backgroundColor: '#F5F5F5' },
+  itemsWrap: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 6 },
+  items: { color: '#666', fontSize: 13, flexShrink: 1 },
+  total: { fontWeight: 'bold', color: '#6F4E37', fontSize: 16 },
+  btn: { marginTop: 15, borderRadius: 10 },
+  empty: { alignItems: 'center', marginTop: 100, opacity: 0.5 },
+  emptyTxt: { marginTop: 12, color: '#888', fontSize: 16, fontWeight: '500' }
 });
-
-export default OrderPage;
