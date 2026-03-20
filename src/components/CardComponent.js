@@ -5,11 +5,14 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 const { width } = Dimensions.get("window");
 
-export default function CardComponent({ item, onAddToCart }) {
+export default function CardComponent({ item, onAddToCart, onFavorite, isFavorite }) {
   return (
     <Card style={styles.card} mode="elevated">
       <View style={styles.imgContainer}>
         <Card.Cover source={{ uri: item.imageUrl || item.image || 'https://via.placeholder.com/150?text=No+Image' }} style={styles.img} />
+        <TouchableOpacity style={styles.favBtn} onPress={() => onFavorite && onFavorite(item)}>
+          <MaterialCommunityIcons name={isFavorite ? "heart" : "heart-outline"} size={20} color={isFavorite ? "#E74C3C" : "#666"} />
+        </TouchableOpacity>
       </View>
       <Card.Content style={styles.content}>
         <Text variant="titleMedium" numberOfLines={1} style={styles.name}>{item.name}</Text>
@@ -27,7 +30,9 @@ export default function CardComponent({ item, onAddToCart }) {
 
 const styles = StyleSheet.create({
   card: { width: width / 2 - 25, marginBottom: 15, backgroundColor: "#fff", borderRadius: 15, elevation: 2 },
-  imgContainer: { padding: 8 }, img: { height: 120, borderRadius: 12, backgroundColor: "#f0f0f0" },
+  imgContainer: { padding: 8, position: 'relative' }, 
+  img: { height: 120, borderRadius: 12, backgroundColor: "#f0f0f0" },
+  favBtn: { position: 'absolute', top: 15, right: 15, backgroundColor: 'rgba(255,255,255,0.8)', borderRadius: 15, width: 30, height: 30, justifyContent: 'center', alignItems: 'center', elevation: 3 },
   content: { paddingHorizontal: 12, paddingBottom: 15, paddingTop: 5 },
   name: { fontWeight: "bold", fontSize: 15, color: "#333", marginBottom: 2 },
   desc: { fontSize: 11, color: "#999", marginBottom: 10 },
