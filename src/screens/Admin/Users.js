@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, FlatList } from 'react-native';
+import { View, StyleSheet, FlatList, Alert } from 'react-native';
 import { Text, Card, IconButton, ActivityIndicator, Chip } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import axios from 'axios';
@@ -17,9 +17,24 @@ export default function Users({ navigation }) {
     setLoading(true);
     try {
       const token = await SecureStore.getItemAsync('userToken');
-      setUsers((await axios.get(`${API_BASE_URL}/auth/users`, { headers: { Authorization: `Bearer ${token}` } })).data);
+      setUsers((await axios.get(`${API_BASE_URL}/users`, { headers: { Authorization: `Bearer ${token}` } })).data);
     } catch (e) { Toast.show({ type: 'error', text1: 'Failed to load users' }); } 
     finally { setLoading(false); }
+  };
+
+  const confirmDelete = (id, name) => {
+    Alert.alert("Delete User", `Are you sure you want to delete ${name}?`, [
+      { text: "Cancel", style: "cancel" },
+      { text: "Delete", style: "destructive", onPress: () => handleDelete(id) }
+    ]);
+  };
+
+  const handleDelete = async (id) => {
+    try {
+      const token = await SecureStore.getItemAsync('userToken');
+      await axios.delete(`${API_BASE_URL}/users/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+      Toast.show({ type: 'success', text1: 'User deleted successfully' }); fetchUsers();
+    } catch (e) { Toast.show({ type: 'error', text1: 'Failed to delete user' }); }
   };
 
   const renderItem = ({ item: u }) => (
@@ -33,6 +48,7 @@ export default function Users({ navigation }) {
             {u.isAdmin ? 'Admin' : 'Customer'}
           </Chip>
         </View>
+        <IconButton icon="trash-can-outline" size={20} iconColor="#D32F2F" containerColor="#FEEBEE" onPress={() => confirmDelete(u._id, u.name)} disabled={u.isAdmin} />
       </View>
     </Card>
   );
