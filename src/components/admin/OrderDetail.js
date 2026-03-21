@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Modal } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Modal, Alert } from 'react-native';
 import { Text, Card, Divider, IconButton, Button } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
@@ -25,18 +25,32 @@ export default function OrderDetail({ route, navigation }) {
     } catch (e) { Toast.show({ type: 'error', text1: 'Update Failed' }); }
   };
 
+  const handleDelete = () => {
+    Alert.alert("Delete Order", "Are you sure you want to permanently delete this order? This cannot be undone.", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Delete", style: "destructive", onPress: async () => {
+          try {
+            const t = await SecureStore.getItemAsync('userToken');
+            await axios.delete(`${API_BASE_URL}/orders/${order._id}`, { headers: { Authorization: `Bearer ${t}` } });
+            Toast.show({ type: 'success', text1: 'Order Deleted' });
+            if(refresh) refresh();
+            navigation.navigate('Orders');
+          } catch (e) { Toast.show({ type: 'error', text1: 'Delete Failed' }); }
+        }
+      }
+    ]);
+  };
+
   const sCfg = { Pending: { c: '#F1C40F', i: 'clock-outline' }, Preparing: { c: '#E67E22', i: 'coffee-maker' }, Ready: { c: '#3498DB', i: 'bell-ring' }, Completed: { c: '#27AE60', i: 'check-circle' }, Cancelled: { c: '#E74C3C', i: 'cancel' } }[order.status] || { c: '#888', i: 'help-circle' };
 
   return (
     <View style={styles.bg}>
       <View style={styles.head}>
-        {/* Strictly navigates back to Orders list */}
         <IconButton icon="arrow-left" size={24} onPress={() => navigation.navigate('Orders')} style={{margin:0, marginLeft:-10}}/>
         <Text style={styles.hTxt}>Order Details</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* Order ID & PROMINENT STATUS BUTTON */}
         <Card style={styles.card}><Card.Content>
           <View style={styles.row}>
             <View><Text style={styles.lbl}>Order ID</Text><Text style={styles.val}>#{order._id}</Text></View>
@@ -84,6 +98,11 @@ export default function OrderDetail({ route, navigation }) {
           <Divider style={styles.div}/>
           <View style={styles.row}><Text style={styles.totLbl}>Total Amount</Text><Text style={styles.totVal}>₱{order.totalPrice.toFixed(2)}</Text></View>
         </Card.Content></Card>
+
+        {/* Delete Order Button */}
+        <Button mode="outlined" textColor="#D32F2F" style={styles.deleteBtn} icon="trash-can-outline" onPress={handleDelete}>
+          DELETE ORDER
+        </Button>
       </ScrollView>
 
       <Modal animationType="fade" transparent visible={modalVis} onRequestClose={() => setModalVis(false)}><View style={styles.overlay}><View style={styles.sheet}>
@@ -113,6 +132,7 @@ const styles = StyleSheet.create({
   cRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
   cLbl: { fontSize: 13, color: '#777' }, cVal: { fontSize: 13, color: '#333', fontWeight: '700', textAlign: 'right', flex: 1, marginLeft: 15 },
   totLbl: { fontSize: 16, fontWeight: 'bold', color: '#333' }, totVal: { fontSize: 20, fontWeight: '900', color: '#6F4E37' },
+  deleteBtn: { marginTop: 10, borderColor: '#D32F2F', borderRadius: 10 },
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 }, sheet: { backgroundColor: '#FFF', borderRadius: 20, padding: 20 },
   mHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }, mTitle: { fontSize: 18, fontWeight: 'bold', color: '#4A3B32' },
   sBtn: { flexDirection: 'row', justifyContent: 'space-between', padding: 15, borderRadius: 12, marginBottom: 8, backgroundColor: '#F9F9F9' }, sBtnOn: { backgroundColor: '#EBE1D7', borderWidth: 1, borderColor: '#6F4E37' },
