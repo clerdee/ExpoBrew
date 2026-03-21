@@ -1,6 +1,8 @@
 const Order = require('../models/Order');
 const Product = require('../models/Product');
 const User = require('../models/User'); 
+const Promo = require('../models/Promo'); 
+const Notification = require('../models/Notification');
 
 const getDashboardStats = async (req, res) => {
   try {
