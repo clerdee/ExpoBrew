@@ -25,14 +25,27 @@ export default function Promos({ navigation }) {
     } catch (e) { Toast.show({ type: 'error', text1: 'Failed to load promos' }); } finally { setLoading(false); }
   };
 
-  const handleCreate = async () => {
-    if (!form.title || !form.code || !form.validUntil) return Toast.show({ type: 'error', text1: 'Fill required fields' });
+const handleCreate = async () => {
+    if (!form.title || !form.code || !form.validUntil || !form.description) {
+      return Toast.show({ type: 'error', text1: 'Please fill all required fields' });
+    }
+    
     try {
       const t = await SecureStore.getItemAsync('userToken');
       await axios.post(`${API_BASE_URL}/admin/promos`, { ...form, value: Number(form.value) || 0 }, { headers: { Authorization: `Bearer ${t}` } });
+      
       Toast.show({ type: 'success', text1: 'Promo Blast Sent!' });
-      setModal(false); fetchPromos();
-    } catch (e) { Toast.show({ type: 'error', text1: 'Creation failed' }); }
+      setModal(false); 
+      fetchPromos();
+      
+    } catch (e) { 
+      console.log("Promo Error: ", e.response?.data || e.message);
+      Toast.show({ 
+        type: 'error', 
+        text1: 'Creation failed', 
+        text2: e.response?.data?.message || 'Check your terminal for details' 
+      }); 
+    }
   };
 
   const filtered = useMemo(() => promos.filter(p => p.title.toLowerCase().includes(search.toLowerCase()) || p.code.toLowerCase().includes(search.toLowerCase())), [promos, search]);

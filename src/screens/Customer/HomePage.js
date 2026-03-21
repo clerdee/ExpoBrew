@@ -76,7 +76,7 @@ export default function HomePage() {
   const handleFavorite = async (p) => {
     try {
       const token = await SecureStore.getItemAsync("userToken");
-      if (!token) return setAuthVis(true);
+      if (!token) return setAuthVis(true); // Pops AuthModal if guest
       const res = await axios.post(`${API_BASE_URL}/users/favorites/${p._id}`, {}, { headers: { Authorization: `Bearer ${token}` } });
       setFavorites(res.data.favorites);
     } catch (e) { Alert.alert("Error", "Could not update favorites"); }
@@ -144,11 +144,19 @@ export default function HomePage() {
       {loading ? <ActivityIndicator size="large" color="#6F4E37" style={{flex:1}} /> : (
         <FlatList 
           data={filtered} 
-          renderItem={({ item }) => <CardComponent item={item} onAddToCart={() => {setSelectedItem(item); setCustVis(true)}} onFavorite={() => handleFavorite(item)} isFavorite={favorites.includes(item._id)} />} 
+          renderItem={({ item }) => (
+            <CardComponent 
+              item={item} 
+              isGuest={!user} 
+              onAddToCart={() => {setSelectedItem(item); setCustVis(true)}} 
+              onFavorite={() => handleFavorite(item)} 
+              isFavorite={favorites.includes(item._id)} 
+            />
+          )} 
           keyExtractor={i => i._id} 
           numColumns={2} 
           columnWrapperStyle={styles.colWrap} 
-          ListHeaderComponent={renderHeader()} // FIXED: Calling it as a function prevents remounting
+          ListHeaderComponent={renderHeader()} 
           contentContainerStyle={styles.list} 
           showsVerticalScrollIndicator={false} 
         />

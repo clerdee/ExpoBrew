@@ -11,11 +11,21 @@ export default function OrderPage({ navigation }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [isGuest, setIsGuest] = useState(false); 
 
   const fetchOrders = useCallback(async () => {
     try {
+      setLoading(true);
       const token = await SecureStore.getItemAsync('userToken');
-      // ENSURE THIS URL MATCHES YOUR BACKEND ROUTE EXACTLY
+      
+      if (!token) {
+        setIsGuest(true);
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
+      
+      setIsGuest(false);
       const { data } = await axios.get(`${API_BASE_URL}/orders/myorders`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -69,16 +79,33 @@ export default function OrderPage({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}><Text style={styles.hTitle}>My Orders</Text><IconButton icon="magnify" size={24} iconColor="#4A3B32" /></View>
-      <View style={styles.tabs}>{['Active', 'History'].map(t => (
-        <TouchableOpacity key={t} style={[styles.tab, activeTab===t && styles.activeTab]} onPress={()=>setActiveTab(t)}>
-          <Text style={[styles.tabTxt, activeTab===t && styles.activeTabTxt]}>{t}</Text>
-        </TouchableOpacity>))}
+      <View style={styles.header}>
+        <Text style={styles.hTitle}>My Orders</Text>
+        {!isGuest && <IconButton icon="magnify" size={24} iconColor="#4A3B32" />}
       </View>
-      {loading ? <ActivityIndicator style={{flex:1}} color="#6F4E37" /> : (
-        <FlatList data={filtered} renderItem={renderOrder} keyExtractor={i=>i._id} contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={()=>{setRefreshing(true); fetchOrders();}} />}
-          ListEmptyComponent={<View style={styles.empty}><MaterialCommunityIcons name="coffee-off-outline" size={64} color="#CCC" /><Text style={styles.emptyTxt}>No {activeTab.toLowerCase()} orders.</Text></View>} />
+
+      {isGuest ? (
+        <View style={styles.guestContainer}>
+          <MaterialCommunityIcons name="login-variant" size={80} color="#D2B48C" />
+          <Text style={styles.guestTitle}>Sign in to view orders</Text>
+          <Text style={styles.guestSub}>Track your active deliveries and easily reorder your past favorites.</Text>
+          <Button mode="contained" buttonColor="#6F4E37" style={styles.loginBtn} onPress={() => navigation.navigate('Auth', { screen: 'Login' })}>
+            Log In or Sign Up
+          </Button>
+        </View>
+      ) : (
+        <>
+          <View style={styles.tabs}>{['Active', 'History'].map(t => (
+            <TouchableOpacity key={t} style={[styles.tab, activeTab===t && styles.activeTab]} onPress={()=>setActiveTab(t)}>
+              <Text style={[styles.tabTxt, activeTab===t && styles.activeTabTxt]}>{t}</Text>
+            </TouchableOpacity>))}
+          </View>
+          {loading ? <ActivityIndicator style={{flex:1}} color="#6F4E37" /> : (
+            <FlatList data={filtered} renderItem={renderOrder} keyExtractor={i=>i._id} contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}
+              refreshControl={<RefreshControl refreshing={refreshing} onRefresh={()=>{setRefreshing(true); fetchOrders();}} />}
+              ListEmptyComponent={<View style={styles.empty}><MaterialCommunityIcons name="coffee-off-outline" size={64} color="#CCC" /><Text style={styles.emptyTxt}>No {activeTab.toLowerCase()} orders.</Text></View>} />
+          )}
+        </>
       )}
     </View>
   );
@@ -106,5 +133,9 @@ const styles = StyleSheet.create({
   total: { fontWeight: 'bold', color: '#6F4E37', fontSize: 16 },
   btn: { marginTop: 15, borderRadius: 10 },
   empty: { alignItems: 'center', marginTop: 100, opacity: 0.5 },
-  emptyTxt: { marginTop: 12, color: '#888', fontSize: 16, fontWeight: '500' }
+  emptyTxt: { marginTop: 12, color: '#888', fontSize: 16, fontWeight: '500' },
+  guestContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 30, marginTop: -80 },
+  guestTitle: { fontSize: 22, fontWeight: 'bold', color: '#4A3B32', marginTop: 15 },
+  guestSub: { fontSize: 14, color: '#888', textAlign: 'center', marginTop: 8, marginBottom: 30, lineHeight: 20 },
+  loginBtn: { borderRadius: 25, width: '100%', paddingVertical: 6, elevation: 3 },
 });

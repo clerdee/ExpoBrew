@@ -2,38 +2,33 @@ import React from "react";
 import { View, StyleSheet, TouchableOpacity, Dimensions } from "react-native";
 import { Text, Card } from "react-native-paper";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import Toast from "react-native-toast-message"; //
+import Toast from "react-native-toast-message"; 
 
 const { width } = Dimensions.get("window");
 
-export default function CardComponent({ item, onAddToCart, onFavorite, isFavorite }) {
+export default function CardComponent({ item, onAddToCart, onFavorite, isFavorite, isGuest }) {
   const handleFavoritePress = () => {
     if (onFavorite) {
       onFavorite(item); 
-      Toast.show({
-        type: isFavorite ? "info" : "success",
-        text1: isFavorite ? "Removed from Favorites" : "Added to Favorites",
-        text2: isFavorite 
-          ? `${item.name} has been removed.` 
-          : `${item.name} saved to your favorites! ☕`,
-        visibilityTime: 2500,
-      });
+      if (!isGuest) {
+        Toast.show({
+          type: isFavorite ? "info" : "success",
+          text1: isFavorite ? "Removed from Favorites" : "Added to Favorites",
+          text2: isFavorite 
+            ? `${item.name} has been removed.` 
+            : `${item.name} saved to your favorites! ☕`,
+          visibilityTime: 2500,
+        });
+      }
     }
   };
 
   return (
     <Card style={styles.card} mode="elevated">
       <View style={styles.imgContainer}>
-        <Card.Cover 
-          source={{ uri: item.imageUrl || item.image || 'https://via.placeholder.com/150' }} 
-          style={styles.img} 
-        />
+        <Card.Cover source={{ uri: item.imageUrl || item.image || 'https://via.placeholder.com/150' }} style={styles.img} />
         <TouchableOpacity activeOpacity={0.7} style={styles.favBtn} onPress={handleFavoritePress}>
-          <MaterialCommunityIcons 
-            name={isFavorite ? "heart" : "heart-outline"} 
-            size={20} 
-            color={isFavorite ? "#E74C3C" : "#666"} 
-          />
+          <MaterialCommunityIcons name={isFavorite ? "heart" : "heart-outline"} size={20} color={isFavorite ? "#E74C3C" : "#666"} />
         </TouchableOpacity>
       </View>
       <Card.Content style={styles.content}>
