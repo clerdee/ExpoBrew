@@ -38,9 +38,19 @@ export default function ProfilePage({ navigation }) {
     setBirthday(orig.birthday); setAddresses([...orig.addresses]); setCurrentPassword(""); setNewPassword("");
   };
 
+  const formatPhone = (val) => setPhone(val.replace(/\D/g, '').substring(0, 11));
+  const formatBday = (val) => {
+    let v = val.replace(/\D/g, '').substring(0, 8);
+    if (v.length > 4) v = v.replace(/^(\d{2})(\d{2})(\d{1,4})/, '$1/$2/$3');
+    else if (v.length > 2) v = v.replace(/^(\d{2})(\d{1,2})/, '$1/$2');
+    setBirthday(v);
+  };
+
   const handleUpdateProfile = async () => {
     if (!name || !email) return Toast.show({ type: "error", text1: "Wait!", text2: "Name and email are required." });
     if (newPassword && !currentPassword) return Toast.show({ type: "error", text1: "Wait!", text2: "Enter current password to set a new one." });
+    if (phone && phone.length !== 11) return Toast.show({ type: "error", text1: "Invalid Phone", text2: "Phone number must be exactly 11 digits." });
+    if (birthday && birthday.length !== 10) return Toast.show({ type: "error", text1: "Invalid Birthday", text2: "Please enter a valid MM/DD/YYYY format." });
     
     setIsLoading(true);
     try {
@@ -65,7 +75,7 @@ export default function ProfilePage({ navigation }) {
       }
 
       const res = await axios.put(`${API_BASE_URL}/users/profile`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` } 
       });
 
       await SecureStore.setItemAsync('userInfo', JSON.stringify(res.data));
@@ -73,6 +83,7 @@ export default function ProfilePage({ navigation }) {
       setCurrentPassword(""); setNewPassword("");
       Toast.show({ type: "success", text1: "Profile Updated!", text2: "Your changes have been saved." });
     } catch (e) { 
+      console.log("UPDATE ERROR:", e.response?.data || e.message);
       Toast.show({ type: "error", text1: "Error", text2: e.response?.data?.message || "Failed to update profile." }); 
     } finally {
       setIsLoading(false);
@@ -123,8 +134,8 @@ export default function ProfilePage({ navigation }) {
               </View>
             ) : (
               <View>
-                <TextInput label="Phone Number" value={phone} onChangeText={setPhone} mode="outlined" style={styles.input} outlineColor="#EBE1D7" activeOutlineColor="#6F4E37" keyboardType="phone-pad" left={<TextInput.Icon icon="phone-outline" color="#888" />} />
-                <TextInput label="Birthday (MM/DD/YYYY)" value={birthday} onChangeText={setBirthday} mode="outlined" style={styles.input} outlineColor="#EBE1D7" activeOutlineColor="#6F4E37" left={<TextInput.Icon icon="cake-variant-outline" color="#888" />} />
+                <TextInput label="Phone Number" value={phone} onChangeText={formatPhone} mode="outlined" style={styles.input} outlineColor="#EBE1D7" activeOutlineColor="#6F4E37" keyboardType="numeric" maxLength={11} left={<TextInput.Icon icon="phone-outline" color="#888" />} />
+                <TextInput label="Birthday (MM/DD/YYYY)" value={birthday} onChangeText={formatBday} mode="outlined" style={styles.input} outlineColor="#EBE1D7" activeOutlineColor="#6F4E37" keyboardType="numeric" maxLength={10} left={<TextInput.Icon icon="cake-variant-outline" color="#888" />} />
                 
                 {addresses.map((addr, index) => (
                   <View key={index} style={styles.addressRow}>

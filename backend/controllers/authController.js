@@ -15,8 +15,8 @@ const buildUserPayload = (user) => ({
   profileImage: user.profileImage,
   phone: user.phone || '',
   birthday: user.birthday || '',
-  address: user.address || '',
-  isActive: user.isActive
+  addresses: user.addresses || [],
+  isActive: user.isActive !== undefined ? user.isActive : true
 });
 
 const registerUser = async (req, res) => {
@@ -66,4 +66,4 @@ const loginUser = async (req, res) => {
   } catch (e) { res.status(500).json({ message: 'Server error. Please try again.' }); }
 };
 
-module.exports = { registerUser, loginUser, verifyOtp };
+module.exports = { registerUser, loginUser, verifyOtp, buildUserPayload };
