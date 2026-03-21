@@ -15,10 +15,16 @@ const PAYMENTS = [
 ];
 
 export default function PlaceOrderPage({ route, navigation }) {
-  const { cartItems, totalPrice, user, clearCart } = route.params;
-  const [method, setMethod] = useState('Pickup'), [branch, setBranch] = useState(BRANCHES[0]);
-  const [addrType, setAddrType] = useState('Home'), [customAddr, setCustomAddr] = useState('');
-  const [mop, setMop] = useState('GCash'), [promo, setPromo] = useState(''), [discount, setDiscount] = useState(0), [loading, setLoading] = useState(false);
+  const { cartItems = [], totalPrice = 0, user = {}, clearCart } = route.params || {};
+  
+  const [method, setMethod] = useState('Pickup');
+  const [branch, setBranch] = useState(BRANCHES[0]);
+  const [addrType, setAddrType] = useState('Home');
+  const [customAddr, setCustomAddr] = useState('');
+  const [mop, setMop] = useState('GCash');
+  const [promo, setPromo] = useState('');
+  const [discount, setDiscount] = useState(0);
+  const [loading, setLoading] = useState(false);
 
   const finalPrice = useMemo(() => Math.max(0, totalPrice - discount), [totalPrice, discount]);
 
@@ -26,7 +32,7 @@ export default function PlaceOrderPage({ route, navigation }) {
     if (!promo) return;
     try {
       const { data } = await axios.get(`${API_BASE_URL}/admin/promos`);
-      const found = data.find(p => p.code.toLowerCase() === promo.toLowerCase() && p.isActive);
+      const found = data.find(p => p.code?.toLowerCase() === promo.toLowerCase() && p.isActive);
       if (found) {
         const val = found.type === 'Percentage' ? (totalPrice * (found.value / 100)) : found.value;
         setDiscount(val);
@@ -36,20 +42,50 @@ export default function PlaceOrderPage({ route, navigation }) {
   };
 
   const handlePlaceOrder = async () => {
-    const shippingAddress = method === 'Pickup' ? `PICKUP: ${branch}` : (addrType === 'Home' ? user.address : customAddr);
-    if (method === 'Delivery' && !shippingAddress) return Alert.alert("Missing Info", "Please provide a delivery address.");
+    const homeAddr = user?.address || "";
+    const shippingAddress = method === 'Pickup' 
+      ? `PICKUP: ${branch}` 
+      : (addrType === 'Home' ? homeAddr : customAddr);
+
+    if (method === 'Delivery' && !shippingAddress.trim()) {
+      return Alert.alert("Missing Info", "Please provide a delivery address.");
+    }
 
     setLoading(true);
     try {
       const token = await SecureStore.getItemAsync('userToken');
-      await axios.post(`${API_BASE_URL}/orders`, {
-        orderItems: cartItems, shippingAddress, paymentMethod: mop, totalPrice: finalPrice, promoCode: promo, discountAmount: discount
-      }, { headers: { Authorization: `Bearer ${token}` } });
+      
+      const payload = {
+        orderItems: cartItems.map(i => ({
+          name: i.name || "Unknown Item",
+          qty: i.qty || 1,
+          price: i.price || 0,
+          image: i.imageUrl || i.image || "",
+          customizations: i.customizations || {}
+        })),
+        shippingAddress: shippingAddress || "No Address Provided",
+        paymentMethod: mop || "GCash",
+        totalPrice: finalPrice,
+        promoCode: promo || "",
+        discountAmount: discount || 0
+      };
 
-      if (clearCart) clearCart(); // <--- CRITICAL: Clears the basket in state
+      await axios.post(`${API_BASE_URL}/orders`, payload, { 
+        headers: { Authorization: `Bearer ${token}` } 
+      });
+
+      if (clearCart) clearCart(); 
+
       Toast.show({ type: 'success', text1: 'Order Placed!', text2: 'Preparing your brew...' });
-      navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
-    } catch (e) { Toast.show({ type: 'error', text1: 'Order failed' }); } finally { setLoading(false); }
+
+      setTimeout(() => {
+        navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
+      }, 500);
+
+    } catch (e) { 
+      console.log("Checkout Error Detail:", e.response?.data || e.message);
+      Toast.show({ type: 'error', text1: 'Order failed', text2: 'Check your connection or try again.' }); 
+    } finally { setLoading(false); }
   };
 
   return (
@@ -72,7 +108,7 @@ export default function PlaceOrderPage({ route, navigation }) {
           </RadioButton.Group></Card>
         ) : (
           <Card style={styles.card}><RadioButton.Group onValueChange={v => setAddrType(v)} value={addrType}>
-            <View style={styles.rRow}><RadioButton value="Home" color="#6F4E37" /><View style={{flex:1}}><Text style={styles.rText}>Default Address</Text>{user.address ? <Text style={styles.subTxt}>{user.address}</Text> : <TouchableOpacity onPress={() => navigation.navigate('Profile')}><Text style={styles.link}>+ Setup Profile Address</Text></TouchableOpacity>}</View></View>
+            <View style={styles.rRow}><RadioButton value="Home" color="#6F4E37" /><View style={{flex:1}}><Text style={styles.rText}>Default Address</Text>{user?.address ? <Text style={styles.subTxt}>{user.address}</Text> : <TouchableOpacity onPress={() => navigation.navigate('Profile')}><Text style={styles.link}>+ Setup Profile Address</Text></TouchableOpacity>}</View></View>
             <View style={styles.rRow}><RadioButton value="Custom" color="#6F4E37" /><Text style={styles.rText}>Different Address</Text></View>
           </RadioButton.Group>{addrType === 'Custom' && <TextInput mode="outlined" placeholder="Enter delivery address..." value={customAddr} onChangeText={setCustomAddr} multiline style={styles.addrInp} activeOutlineColor="#6F4E37" />}</Card>
         )}

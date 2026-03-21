@@ -7,6 +7,8 @@ const orderSchema = new mongoose.Schema({
     image: { type: String }, price: { type: Number, required: true },
     customizations: { type: Object }
   }],
+  shippingAddress: { type: String, required: true }, 
+  paymentMethod: { type: String, required: true },
   totalPrice: { type: Number, required: true, default: 0.0 },
   status: { type: String, required: true, default: 'Pending', enum: ['Pending', 'Preparing', 'Ready', 'Completed', 'Cancelled'] }
 }, { timestamps: true });
