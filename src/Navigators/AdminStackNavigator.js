@@ -62,8 +62,11 @@ export default function AdminStackNavigator() {
       <Drawer.Screen name="Products" component={Products} options={{ drawerIcon: ({color}) => <MaterialCommunityIcons name="coffee" size={22} color={color} /> }} />
       <Drawer.Screen name="Users" component={Users} options={{ drawerIcon: ({color}) => <MaterialCommunityIcons name="account-group" size={22} color={color} /> }} />
       <Drawer.Screen name="Orders" component={Orders} options={{ drawerIcon: ({color}) => <MaterialCommunityIcons name="clipboard-list" size={22} color={color} /> }} />
-      <Drawer.Screen name="Settings" component={Dashboard} options={{ drawerIcon: ({color}) => <MaterialCommunityIcons name="cog" size={22} color={color} /> }} />
       
+      {/* New Promos Tab - Temporarily linked to Dashboard until we build it! */}
+      <Drawer.Screen name="Promos" component={Dashboard} options={{ drawerIcon: ({color}) => <MaterialCommunityIcons name="ticket-percent" size={22} color={color} /> }} />
+      
+      <Drawer.Screen name="Settings" component={Dashboard} options={{ drawerIcon: ({color}) => <MaterialCommunityIcons name="cog" size={22} color={color} /> }} />
       <Drawer.Screen name="OrderDetail" component={OrderDetail} options={{ drawerItemStyle: { display: 'none' } }} />
     </Drawer.Navigator>
   );
