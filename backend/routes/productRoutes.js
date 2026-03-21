@@ -4,13 +4,7 @@ const multer = require('multer');
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const cloudinary = require('cloudinary').v2; 
 
-const {
-  getAllProducts,
-  getProductById,
-  createProduct,
-  updateProduct,
-  deleteProduct
-} = require('../controllers/productController');
+const { getAllProducts, getProductById, createProduct, updateProduct, deleteProduct} = require('../controllers/productController');
 
 const { protect, admin } = require('../middleware/authMiddleware');
 
