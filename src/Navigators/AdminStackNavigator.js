@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, Image } from "react-native";
 import { createDrawerNavigator, DrawerContentScrollView, DrawerItemList, DrawerItem } from "@react-navigation/drawer";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as SecureStore from 'expo-secure-store';
@@ -15,7 +15,7 @@ import OrderDetail from '../components/admin/OrderDetail';
 const Drawer = createDrawerNavigator();
 
 function CustomDrawerContent(props) {
-  const [adminInfo, setAdminInfo] = useState({ name: 'Loading...', email: '' });
+  const [adminInfo, setAdminInfo] = useState({ name: 'Loading...', email: '', profileImage: null });
 
   useEffect(() => {
     (async () => {
@@ -23,7 +23,11 @@ function CustomDrawerContent(props) {
         const uInfo = await SecureStore.getItemAsync('userInfo');
         if (uInfo) {
           const u = JSON.parse(uInfo);
-          setAdminInfo({ name: u.name || 'Admin User', email: u.email || 'admin@expobrew.com' });
+          setAdminInfo({ 
+            name: u.name || 'Admin User', 
+            email: u.email || 'admin@expobrew.com',
+            profileImage: u.profileImage || null 
+          });
         }
       } catch (e) { console.error("Admin fetch error:", e); }
     })();
@@ -42,7 +46,13 @@ function CustomDrawerContent(props) {
     <View style={{ flex: 1 }}>
       <DrawerContentScrollView {...props} contentContainerStyle={{ paddingTop: 0 }}>
         <View style={styles.head}>
-          <View style={styles.avatar}><MaterialCommunityIcons name="account-tie" size={45} color="#4A2E1B" /></View>
+          <View style={styles.avatar}>
+            {adminInfo.profileImage ? (
+              <Image source={{ uri: adminInfo.profileImage }} style={styles.profileImg} />
+            ) : (
+              <MaterialCommunityIcons name="account-tie" size={45} color="#4A2E1B" />
+            )}
+          </View>
           <Text style={styles.aName}>{adminInfo.name}</Text>
           <Text style={styles.aEmail}>{adminInfo.email}</Text>
           <View style={styles.badge}><Text style={styles.bTxt}>Administrator</Text></View>
@@ -50,7 +60,6 @@ function CustomDrawerContent(props) {
         <View style={styles.items}><DrawerItemList {...props} /></View>
       </DrawerContentScrollView>
       <View style={styles.foot}>
-        <DrawerItem label="Switch to Customer" icon={({color}) => <MaterialCommunityIcons name="swap-horizontal" size={24} color="#6F4E37" />} labelStyle={{color: '#6F4E37', fontWeight: '600'}} onPress={() => props.navigation.navigate('User')} />
         <DrawerItem label="Log Out" icon={({color}) => <MaterialCommunityIcons name="logout" size={24} color="#D32F2F" />} labelStyle={styles.logout} onPress={handleLogout} />
       </View>
     </View>
@@ -75,6 +84,7 @@ export default function AdminStackNavigator() {
 const styles = StyleSheet.create({
   head: { backgroundColor: '#4A2E1B', paddingTop: 60, paddingBottom: 30, paddingHorizontal: 20, borderBottomRightRadius: 30, marginBottom: 15 },
   avatar: { width: 70, height: 70, backgroundColor: '#FFF', borderRadius: 35, justifyContent: 'center', alignItems: 'center', marginBottom: 15, elevation: 5 },
+  profileImg: { width: 70, height: 70, borderRadius: 35 },
   aName: { color: '#FFF', fontSize: 22, fontWeight: 'bold', marginBottom: 2 }, aEmail: { color: '#D3C4B7', fontSize: 14, marginBottom: 12 },
   badge: { backgroundColor: '#D4AF37', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 15, alignSelf: 'flex-start' },
   bTxt: { color: '#FFF', fontSize: 12, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 0.5 }, items: { paddingHorizontal: 10 },

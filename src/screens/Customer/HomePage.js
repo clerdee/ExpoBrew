@@ -25,13 +25,25 @@ const BANNERS = [
   { id: 3, img: require('../../../assets/pic3.jpg'), title: "HAPPY HOUR", sub: "BUY 1 GET 1 FREE" }
 ];
 
-export default function HomePage() {
+export default function HomePage({ navigation }) {
+  const dispatch = useDispatch();
+
   const [cartVis, setCartVis] = useState(false), [authVis, setAuthVis] = useState(false), [profVis, setProfVis] = useState(false);
   const [custVis, setCustVis] = useState(false), [user, setUser] = useState(null);
   const [cartItems, setCartItems] = useState([]), [selectedItem, setSelectedItem] = useState(null);
   const [loading, setLoading] = useState(true), [activeCat, setActiveCat] = useState('All'), [favorites, setFavorites] = useState([]);
   const [currentSlide, setCurrentSlide] = useState(0);
   
+  // Added missing states for products and filters
+  const [products, setProducts] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [minPrice, setMinPrice] = useState('');
+  const [maxPrice, setMaxPrice] = useState('');
+  const [filterVis, setFilterVis] = useState(false);
+  const [tempCategory, setTempCategory] = useState('All');
+  const [tempMinPrice, setTempMinPrice] = useState('');
+  const [tempMaxPrice, setTempMaxPrice] = useState('');
+
   const bannerRef = useRef(null);
 
   useEffect(() => {
@@ -95,7 +107,7 @@ export default function HomePage() {
   const handleFavorite = async (p) => {
     try {
       const token = await SecureStore.getItemAsync("userToken");
-      if (!token) return setAuthVis(true); // Pops AuthModal if guest
+      if (!token) return setAuthVis(true);
       const res = await axios.post(`${API_BASE_URL}/users/favorites/${p._id}`, {}, { headers: { Authorization: `Bearer ${token}` } });
       setFavorites(res.data.favorites);
     } catch (e) { Alert.alert('Error', 'Could not update favorites'); }
@@ -122,41 +134,31 @@ export default function HomePage() {
   const activeFilterCount = [activeCat !== 'All', !!minPrice, !!maxPrice].filter(Boolean).length;
 
   const applyFilters = () => {
-    setActiveCat(tempCategory);
-    setMinPrice(tempMinPrice);
-    setMaxPrice(tempMaxPrice);
-    setFilterVis(false);
+    setActiveCat(tempCategory); setMinPrice(tempMinPrice); setMaxPrice(tempMaxPrice); setFilterVis(false);
   };
 
   const clearFilters = () => {
-    setTempCategory('All');
-    setTempMinPrice('');
-    setTempMaxPrice('');
-    setActiveCat('All');
-    setMinPrice('');
-    setMaxPrice('');
-    setFilterVis(false);
+    setTempCategory('All'); setTempMinPrice(''); setTempMaxPrice('');
+    setActiveCat('All'); setMinPrice(''); setMaxPrice(''); setFilterVis(false);
   };
 
   const openFilters = () => {
-    setTempCategory(activeCat);
-    setTempMinPrice(minPrice);
-    setTempMaxPrice(maxPrice);
-    setFilterVis(true);
+    setTempCategory(activeCat); setTempMinPrice(minPrice); setTempMaxPrice(maxPrice); setFilterVis(true);
   };
 
   const renderHeader = () => (
     <View>
       <Header user={user} cartItemCount={cartItems.length} onAvatarPress={() => user ? setProfVis(true) : setAuthVis(true)} onCartPress={() => setCartVis(true)} />
-      <Text variant="titleMedium" style={styles.secTitle}>Daily discounts</Text>
       
+      <View style={styles.searchRow}>
+        <Searchbar placeholder="Search products..." onChangeText={setSearchQuery} value={searchQuery} style={styles.searchBar} inputStyle={{minHeight: 0}} />
+        <IconButton icon="filter-variant" mode="contained" containerColor="#6F4E37" iconColor="#fff" size={24} onPress={openFilters} />
+      </View>
+
+      <Text variant="titleMedium" style={styles.secTitle}>Daily discounts</Text>
       <Card style={styles.banner}>
         <FlatList
-          ref={bannerRef}
-          data={BANNERS}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
+          ref={bannerRef} data={BANNERS} horizontal pagingEnabled showsHorizontalScrollIndicator={false}
           keyExtractor={item => item.id.toString()}
           getItemLayout={(data, index) => ({ length: BANNER_WIDTH, offset: BANNER_WIDTH * index, index })}
           onMomentumScrollEnd={(e) => setCurrentSlide(Math.round(e.nativeEvent.contentOffset.x / BANNER_WIDTH))}
@@ -171,16 +173,12 @@ export default function HomePage() {
             </View>
           )}
         />
-        
         <View style={styles.slideControls} pointerEvents="box-none">
           <IconButton icon="chevron-left" size={30} iconColor="#fff" onPress={() => navigateSlide(-1)} style={styles.navBtn} />
           <IconButton icon="chevron-right" size={30} iconColor="#fff" onPress={() => navigateSlide(1)} style={styles.navBtn} />
         </View>
-
         <View style={styles.dotsContainer} pointerEvents="none">
-          {BANNERS.map((_, i) => (
-            <View key={i} style={[styles.dot, currentSlide === i && styles.activeDot]} />
-          ))}
+          {BANNERS.map((_, i) => <View key={i} style={[styles.dot, currentSlide === i && styles.activeDot]} /> )}
         </View>
       </Card>
 
@@ -210,19 +208,13 @@ export default function HomePage() {
           data={filtered}
           renderItem={({ item }) => (
             <CardComponent 
-              item={item} 
-              isGuest={!user} 
+              item={item} isGuest={!user} 
               onAddToCart={() => {setSelectedItem(item); setCustVis(true)}} 
-              onFavorite={() => handleFavorite(item)} 
-              isFavorite={favorites.includes(item._id)} 
+              onFavorite={() => handleFavorite(item)} isFavorite={favorites.includes(item._id)} 
             />
           )} 
-          keyExtractor={i => i._id} 
-          numColumns={2} 
-          columnWrapperStyle={styles.colWrap} 
-          ListHeaderComponent={renderHeader()} 
-          contentContainerStyle={styles.list} 
-          showsVerticalScrollIndicator={false} 
+          keyExtractor={i => i._id} numColumns={2} columnWrapperStyle={styles.colWrap} 
+          ListHeaderComponent={renderHeader()} contentContainerStyle={styles.list} showsVerticalScrollIndicator={false} 
         />
       )}
 
@@ -238,9 +230,7 @@ export default function HomePage() {
             <View style={styles.chipWrap}>
               {CATEGORIES.map(category => (
                 <Chip
-                  key={category}
-                  selected={tempCategory === category}
-                  onPress={() => setTempCategory(category)}
+                  key={category} selected={tempCategory === category} onPress={() => setTempCategory(category)}
                   style={[styles.filterChip, tempCategory === category && styles.filterChipActive]}
                   textStyle={tempCategory === category ? styles.filterChipTextActive : styles.filterChipText}
                 >
@@ -250,26 +240,8 @@ export default function HomePage() {
             </View>
 
             <Text style={styles.filterSectionTitle}>Price Range</Text>
-            <TextInput
-              mode="outlined"
-              label="Minimum Price"
-              value={tempMinPrice}
-              onChangeText={setTempMinPrice}
-              keyboardType="numeric"
-              style={styles.filterInput}
-              activeOutlineColor="#6F4E37"
-              left={<TextInput.Affix text="₱" />}
-            />
-            <TextInput
-              mode="outlined"
-              label="Maximum Price"
-              value={tempMaxPrice}
-              onChangeText={setTempMaxPrice}
-              keyboardType="numeric"
-              style={styles.filterInput}
-              activeOutlineColor="#6F4E37"
-              left={<TextInput.Affix text="₱" />}
-            />
+            <TextInput mode="outlined" label="Minimum Price" value={tempMinPrice} onChangeText={setTempMinPrice} keyboardType="numeric" style={styles.filterInput} activeOutlineColor="#6F4E37" left={<TextInput.Affix text="₱" />} />
+            <TextInput mode="outlined" label="Maximum Price" value={tempMaxPrice} onChangeText={setTempMaxPrice} keyboardType="numeric" style={styles.filterInput} activeOutlineColor="#6F4E37" left={<TextInput.Affix text="₱" />} />
 
             <View style={styles.sheetActions}>
               <Button mode="text" textColor="#8B5E3C" onPress={clearFilters}>Clear All</Button>
@@ -302,5 +274,22 @@ const styles = StyleSheet.create({
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.4)', marginHorizontal: 4 },
   activeDot: { backgroundColor: '#fff', width: 20 },
   catScroll: { flexDirection: "row", marginBottom: 20 }, catPill: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 25, marginRight: 10, backgroundColor: "#fff", borderWidth: 1, borderColor: "#EFEFEF" },
-  catOn: { backgroundColor: "#6F4E37", borderColor: "#6F4E37" }, catText: { color: "#6F4E37", fontWeight: "600" }, catTextOn: { color: "#fff" }, colWrap: { justifyContent: "space-between" }
+  catOn: { backgroundColor: "#6F4E37", borderColor: "#6F4E37" }, catText: { color: "#6F4E37", fontWeight: "600" }, catTextOn: { color: "#fff" }, colWrap: { justifyContent: "space-between" },
+  searchRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 15 },
+  searchBar: { flex: 1, backgroundColor: '#fff', elevation: 2, height: 50 },
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  sheet: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 40 },
+  sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  sheetTitle: { fontSize: 20, fontWeight: 'bold', color: '#4A3B32' },
+  filterSectionTitle: { fontSize: 16, fontWeight: 'bold', color: '#4A3B32', marginTop: 15, marginBottom: 10 },
+  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  filterChip: { backgroundColor: '#EFEFEF', marginBottom: 5 },
+  filterChipActive: { backgroundColor: '#6F4E37' },
+  filterChipText: { color: '#4A3B32' },
+  filterChipTextActive: { color: '#fff' },
+  filterInput: { backgroundColor: '#fff', marginTop: 5 },
+  sheetActions: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 25 },
+  activeFiltersRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginBottom: 15 },
+  activeFilterChip: { backgroundColor: '#EFEFEF' },
+  clearText: { color: '#8B5E3C', textDecorationLine: 'underline', fontSize: 13, marginLeft: 5 }
 });
