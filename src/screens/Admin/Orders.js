@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, StyleSheet, FlatList, ScrollView, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, FlatList, TouchableOpacity, Modal } from 'react-native';
 import { Text, Card, IconButton, ActivityIndicator, Chip, Searchbar, Button, Divider } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
@@ -8,14 +8,21 @@ import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../configs/config';
 
 const STATUSES = ['All', 'Pending', 'Preparing', 'Ready', 'Completed', 'Cancelled'];
-const DATES = ['All Time', 'Today', 'Last 7 Days'];
+const DATES = ['All Time', 'Today', 'This Hour'];
 
 export default function AdminOrders({ navigation }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  
+  // Active Filters
   const [statusFilter, setStatusFilter] = useState('All');
-  const [dateFilter, setDateFilter] = useState('All Time');
+  const [dateFilter, setDateFilter] = useState('Today');
+  
+  // Modal Draft Filters
+  const [filterVis, setFilterVis] = useState(false);
+  const [tempStatus, setTempStatus] = useState('All');
+  const [tempDate, setTempDate] = useState('Today');
 
   const fetchOrders = useCallback(async () => {
     setLoading(true);
@@ -37,13 +44,27 @@ export default function AdminOrders({ navigation }) {
     } catch (e) { Toast.show({ type: 'error', text1: 'Failed to update order' }); }
   };
 
+  const openFilters = () => {
+    setTempStatus(statusFilter);
+    setTempDate(dateFilter);
+    setFilterVis(true);
+  };
+
+  const applyFilters = () => {
+    setStatusFilter(tempStatus);
+    setDateFilter(tempDate);
+    setFilterVis(false);
+  };
+
   const filtered = useMemo(() => orders.filter(o => {
     const matchSearch = o._id.toLowerCase().includes(search.toLowerCase()) || o.user?.name?.toLowerCase().includes(search.toLowerCase());
     const matchStatus = statusFilter === 'All' || o.status === statusFilter;
     let matchDate = true;
     const oDate = new Date(o.createdAt), now = new Date();
+    
     if (dateFilter === 'Today') matchDate = oDate.toDateString() === now.toDateString();
-    if (dateFilter === 'Last 7 Days') matchDate = (now - oDate) / (1000*60*60*24) <= 7;
+    if (dateFilter === 'This Hour') matchDate = (now - oDate) / (1000 * 60 * 60) <= 1; 
+    
     return matchSearch && matchStatus && matchDate;
   }), [orders, search, statusFilter, dateFilter]);
 
@@ -74,10 +95,10 @@ export default function AdminOrders({ navigation }) {
               <Text style={styles.total}>₱{o.totalPrice.toFixed(2)}</Text>
             </View>
 
-            {/* Direct Accept Action for Pending Orders */}
             {o.status === 'Pending' && (
               <View style={styles.actionRow}>
-                <Button mode="contained" buttonColor="#4A2E1B" labelStyle={{fontSize: 13, fontWeight: 'bold'}} style={styles.acceptBtn} onPress={() => handleAccept(o._id)}>
+                {/* Noticeably Green Accept Button */}
+                <Button mode="contained" buttonColor="#27AE60" labelStyle={{fontSize: 13, fontWeight: 'bold'}} style={styles.acceptBtn} onPress={() => handleAccept(o._id)}>
                   ACCEPT ORDER
                 </Button>
               </View>
@@ -101,18 +122,7 @@ export default function AdminOrders({ navigation }) {
         
         <View style={styles.searchRow}>
           <Searchbar placeholder="Search ID or Customer..." onChangeText={setSearch} value={search} style={styles.searchBar} inputStyle={{ fontSize: 15 }} iconColor="#4A2E1B" elevation={2} />
-        </View>
-
-        <View style={styles.filters}>
-          <Text style={styles.filterTitle}>Order Status</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scroll}>
-            {STATUSES.map(f => <Chip key={f} mode="flat" onPress={()=>setStatusFilter(f)} style={[styles.chip, statusFilter===f?styles.chipOn:styles.chipOff]} textStyle={statusFilter===f?styles.textOn:styles.textOff}>{f}</Chip>)}
-          </ScrollView>
-          
-          <Text style={styles.filterTitle}>Time Range</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scroll}>
-            {DATES.map(f => <Chip key={f} mode="flat" onPress={()=>setDateFilter(f)} style={[styles.chip, dateFilter===f?styles.chipOn:styles.chipOff]} textStyle={dateFilter===f?styles.textOn:styles.textOff}>{f}</Chip>)}
-          </ScrollView>
+          <IconButton icon="tune-variant" size={26} iconColor="#4A2E1B" containerColor="#FFF" style={styles.filterBtn} onPress={openFilters} />
         </View>
       </View>
 
@@ -123,6 +133,31 @@ export default function AdminOrders({ navigation }) {
           } />
         )}
       </View>
+
+      <Modal animationType="slide" transparent visible={filterVis} onRequestClose={() => setFilterVis(false)}>
+        <View style={styles.overlay}>
+          <View style={styles.sheet}>
+            <View style={styles.mHead}>
+              <Text style={styles.mTitle}>Filter Orders</Text>
+              <IconButton icon="close" onPress={() => setFilterVis(false)} />
+            </View>
+            
+            <Text style={styles.filterTitle}>Order Status</Text>
+            <View style={styles.wrapContainer}>
+              {STATUSES.map(f => <Chip key={f} mode="flat" onPress={()=>setTempStatus(f)} style={[styles.chip, tempStatus===f?styles.chipOn:styles.chipOff]} textStyle={tempStatus===f?styles.textOn:styles.textOff}>{f}</Chip>)}
+            </View>
+            
+            <Text style={styles.filterTitle}>Time Range</Text>
+            <View style={styles.wrapContainer}>
+              {DATES.map(f => <Chip key={f} mode="flat" onPress={()=>setTempDate(f)} style={[styles.chip, tempDate===f?styles.chipOn:styles.chipOff]} textStyle={tempDate===f?styles.textOn:styles.textOff}>{f}</Chip>)}
+            </View>
+
+            <Button mode="contained" buttonColor="#4A2E1B" style={{ marginTop: 15, borderRadius: 10 }} contentStyle={{ height: 50 }} onPress={applyFilters}>
+              Show Results
+            </Button>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -132,10 +167,8 @@ const styles = StyleSheet.create({
   header: { backgroundColor: '#4A2E1B', paddingHorizontal: 20, paddingTop: 50, paddingBottom: 40, borderBottomRightRadius: 25, borderBottomLeftRadius: 25 },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, title: { fontSize: 22, fontWeight: '800', color: '#FFF' },
   searchRow: { flexDirection: 'row', alignItems: 'center', marginTop: -25, paddingHorizontal: 20 }, searchBar: { flex: 1, backgroundColor: '#FFF', borderRadius: 12, height: 50 },
-  filters: { paddingHorizontal: 20, marginTop: 15, marginBottom: 5 }, filterTitle: { fontSize: 12, fontWeight: '700', color: '#A0A0A0', textTransform: 'uppercase', marginBottom: 6 },
-  scroll: { marginBottom: 12 }, chip: { marginRight: 8, borderRadius: 20, paddingHorizontal: 4, height: 34, justifyContent: 'center' },
-  chipOn: { backgroundColor: '#4A2E1B' }, chipOff: { backgroundColor: '#EAEAEA' }, textOn: { color: '#FFF', fontWeight: 'bold', fontSize: 13 }, textOff: { color: '#666', fontWeight: '600', fontSize: 13 },
-  loader: { flex: 1, justifyContent: 'center' }, list: { paddingHorizontal: 20, paddingBottom: 40, paddingTop: 5 }, card: { marginBottom: 14, backgroundColor: '#FFF', borderRadius: 15 },
+  filterBtn: { margin: 0, marginLeft: 10, width: 50, height: 50, borderRadius: 12, elevation: 2 },
+  loader: { flex: 1, justifyContent: 'center' }, list: { paddingHorizontal: 20, paddingBottom: 40, paddingTop: 15 }, card: { marginBottom: 14, backgroundColor: '#FFF', borderRadius: 15 },
   cardContent: { padding: 16 }, rowTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   id: { fontSize: 16, fontWeight: '900', color: '#333' }, date: { fontSize: 12, color: '#888', marginTop: 2 },
   statusBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10 }, statusTxt: { fontSize: 11, fontWeight: '900', letterSpacing: 0.5 },
@@ -143,5 +176,11 @@ const styles = StyleSheet.create({
   cust: { fontSize: 14, fontWeight: '600', color: '#444', marginBottom: 4 }, items: { fontSize: 13, color: '#888' },
   total: { fontSize: 18, fontWeight: '900', color: '#4A2E1B' },
   actionRow: { marginTop: 15, borderTopWidth: 1, borderTopColor: '#F0F0F0', paddingTop: 15 }, acceptBtn: { borderRadius: 8 },
-  empty: { alignItems: 'center', marginTop: 60 }, emptyText: { color: '#888', fontSize: 16, marginTop: 10, fontWeight: '500' }
+  empty: { alignItems: 'center', marginTop: 60 }, emptyText: { color: '#888', fontSize: 16, marginTop: 10, fontWeight: '500' },
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }, sheet: { backgroundColor: '#FFF', borderTopLeftRadius: 25, borderTopRightRadius: 25, padding: 25, paddingBottom: 40 },
+  mHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }, mTitle: { fontSize: 20, fontWeight: 'bold', color: '#4A2E1B' },
+  filterTitle: { fontSize: 13, fontWeight: '700', color: '#A0A0A0', textTransform: 'uppercase', marginBottom: 10 },
+  wrapContainer: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 20 }, 
+  chip: { marginRight: 8, marginBottom: 8, borderRadius: 20, paddingHorizontal: 4, height: 36, justifyContent: 'center' },
+  chipOn: { backgroundColor: '#4A2E1B' }, chipOff: { backgroundColor: '#F0F0F0' }, textOn: { color: '#FFF', fontWeight: 'bold', fontSize: 13 }, textOff: { color: '#555', fontWeight: '600', fontSize: 13 },
 });
