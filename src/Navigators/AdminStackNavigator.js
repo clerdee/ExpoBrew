@@ -9,6 +9,7 @@ import Dashboard from "../screens/Admin/Dashboard";
 import Products from "../screens/Admin/Products";
 import Users from '../screens/Admin/Users';
 import Orders from '../screens/Admin/Orders';
+import Promos from '../screens/Admin/Promos';
 import OrderDetail from '../components/admin/OrderDetail';
 
 const Drawer = createDrawerNavigator();
@@ -49,6 +50,7 @@ function CustomDrawerContent(props) {
         <View style={styles.items}><DrawerItemList {...props} /></View>
       </DrawerContentScrollView>
       <View style={styles.foot}>
+        <DrawerItem label="Switch to Customer" icon={({color}) => <MaterialCommunityIcons name="swap-horizontal" size={24} color="#6F4E37" />} labelStyle={{color: '#6F4E37', fontWeight: '600'}} onPress={() => props.navigation.navigate('User')} />
         <DrawerItem label="Log Out" icon={({color}) => <MaterialCommunityIcons name="logout" size={24} color="#D32F2F" />} labelStyle={styles.logout} onPress={handleLogout} />
       </View>
     </View>
@@ -62,11 +64,9 @@ export default function AdminStackNavigator() {
       <Drawer.Screen name="Products" component={Products} options={{ drawerIcon: ({color}) => <MaterialCommunityIcons name="coffee" size={22} color={color} /> }} />
       <Drawer.Screen name="Users" component={Users} options={{ drawerIcon: ({color}) => <MaterialCommunityIcons name="account-group" size={22} color={color} /> }} />
       <Drawer.Screen name="Orders" component={Orders} options={{ drawerIcon: ({color}) => <MaterialCommunityIcons name="clipboard-list" size={22} color={color} /> }} />
-      
-      {/* New Promos Tab - Temporarily linked to Dashboard until we build it! */}
-      <Drawer.Screen name="Promos" component={Dashboard} options={{ drawerIcon: ({color}) => <MaterialCommunityIcons name="ticket-percent" size={22} color={color} /> }} />
-      
+      <Drawer.Screen name="Promos" component={Promos} options={{ drawerIcon: ({color}) => <MaterialCommunityIcons name="ticket-percent" size={22} color={color} /> }} />
       <Drawer.Screen name="Settings" component={Dashboard} options={{ drawerIcon: ({color}) => <MaterialCommunityIcons name="cog" size={22} color={color} /> }} />
+
       <Drawer.Screen name="OrderDetail" component={OrderDetail} options={{ drawerItemStyle: { display: 'none' } }} />
     </Drawer.Navigator>
   );

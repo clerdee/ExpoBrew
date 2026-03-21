@@ -37,22 +37,20 @@ const updateOrderStatus = async (req, res) => {
 
 const createPromo = async (req, res) => {
   try {
-    const promo = new Promo(req.body);
-    await promo.save();
-
+    const promo = await Promo.create(req.body);
     await Notification.create({
-      title: `New Promo: ${promo.title}`,
+      title: `🎁 New Promo: ${promo.title}`,
       message: `${promo.description}. Use code: ${promo.code}`,
       type: 'Promo'
     });
-
     res.status(201).json(promo);
-  } catch (e) { res.status(500).json({ message: "Error" }); }
+  } catch (e) { res.status(500).json({ message: "Failed to create promo" }); }
 };
 
 const getPromos = async (req, res) => {
-  try { res.status(200).json(await Promo.find().sort({ createdAt: -1 })); }
-  catch (e) { res.status(500).json({ message: "Error fetching promos" }); }
+  try {
+    res.status(200).json(await Promo.find().sort({ createdAt: -1 }));
+  } catch (e) { res.status(500).json({ message: "Failed to fetch promos" }); }
 };
 
 module.exports = { getDashboardStats, updateOrderStatus, createPromo, getPromos };
