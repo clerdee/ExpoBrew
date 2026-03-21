@@ -1,21 +1,51 @@
-import React from 'react';
-import { View, StyleSheet, ScrollView, Share } from 'react-native';
+import React, { useState } from 'react';
+import { View, StyleSheet, ScrollView, Share, TouchableOpacity } from 'react-native';
 import { Text, Card, IconButton, Button, Divider, Chip } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import * as Clipboard from 'expo-clipboard';
+import Toast from 'react-native-toast-message'; 
 
 export default function PromoDetail({ route, navigation }) {
   const { promo } = route.params;
-  const isExp = new Date(promo.validUntil) < new Date();
+  const [isCodeVisible, setIsCodeVisible] = useState(false);
+
+  const isNotif = !!promo.message && !promo.validUntil;
+  const title = isNotif ? promo.title.replace('🎁 ', '') : promo.title;
+  const code = isNotif ? (promo.message.match(/Use code: (.*)/)?.[1] || 'PROMO') : promo.code;
+  let desc = isNotif ? promo.message.split('. Use code:')[0] : promo.description;
+  
+  const validUntil = isNotif ? new Date(new Date(promo.createdAt).getTime() + 7 * 86400000) : new Date(promo.validUntil);
+  const isExp = validUntil < new Date();
 
   let iconName = 'ticket-percent';
-  let bannerVal = '';
-  if (promo.type === 'Percentage') bannerVal = `${promo.value}% OFF`;
-  else if (promo.type === 'Fixed') { bannerVal = `₱${promo.value} OFF`; iconName = 'currency-php'; }
-  else if (promo.type === 'FreeShipping') { bannerVal = 'FREE SHIPPING'; iconName = 'truck-fast'; }
-  else if (promo.type === 'SpecialDeal') { bannerVal = `₱${promo.value} DEAL`; iconName = 'star-shooting'; }
+  let bannerVal = 'SPECIAL OFFER';
+
+  if (isNotif) {
+    if (desc.includes('% OFF')) { bannerVal = desc.split(':')[0]; iconName = 'percent'; }
+    else if (desc.includes('₱') && desc.includes('OFF')) { bannerVal = desc.split(':')[0]; iconName = 'currency-php'; }
+    else if (desc.includes('FREE DELIVERY')) { bannerVal = 'FREE SHIPPING'; iconName = 'truck-fast'; }
+    else if (desc.includes('MEGA DEAL')) { bannerVal = 'MEGA DEAL'; iconName = 'star-shooting'; }
+    desc = desc.split(': ')[1] || desc; 
+  } else {
+    if (promo.type === 'Percentage') { bannerVal = `${promo.value}% OFF`; iconName = 'percent'; }
+    else if (promo.type === 'Fixed') { bannerVal = `₱${promo.value} OFF`; iconName = 'currency-php'; }
+    else if (promo.type === 'FreeShipping') { bannerVal = 'FREE SHIPPING'; iconName = 'truck-fast'; }
+    else if (promo.type === 'SpecialDeal') { bannerVal = `₱${promo.value} DEAL`; iconName = 'star-shooting'; }
+  }
 
   const onShare = async () => {
-    try { await Share.share({ message: `I found a ${bannerVal} deal at ExpoBrew! Use code: ${promo.code}` }); } catch (e) { }
+    try { await Share.share({ message: `I found a ${bannerVal} deal at ExpoBrew! Use code: ${code}` }); } catch (e) { }
+  };
+
+  const handleApplyCode = async () => {
+    await Clipboard.setStringAsync(code);
+    Toast.show({
+      type: 'success',
+      text1: 'Code Copied!',
+      text2: `Voucher code '${code}' is ready to use at checkout.`,
+      position: 'bottom'
+    });
+    navigation.navigate('Home');
   };
 
   return (
@@ -35,24 +65,27 @@ export default function PromoDetail({ route, navigation }) {
           <Card.Content style={{ padding: 20 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: 10 }}>
               <Chip icon="clock-outline" textStyle={{ color: isExp ? '#D32F2F' : '#E67E22', fontSize: 12, fontWeight: 'bold' }} style={{ backgroundColor: isExp ? '#FFEBEE' : '#FDF7F2' }}>
-                {isExp ? 'EXPIRED' : `Valid until ${new Date(promo.validUntil).toLocaleDateString()}`}
+                {isExp ? 'EXPIRED' : `Valid until ${validUntil.toLocaleDateString()}`}
               </Chip>
             </View>
 
-            <Text style={styles.title}>{promo.title}</Text>
+            <Text style={styles.title}>{title}</Text>
             <Divider style={styles.div} />
             <Text style={styles.secTitle}>Terms & Description</Text>
-            <Text style={styles.msg}>{promo.description}</Text>
+            <Text style={styles.msg}>{desc}</Text>
             
-            <View style={styles.codeBox}>
+            <TouchableOpacity style={styles.codeBox} onPress={() => setIsCodeVisible(!isCodeVisible)} activeOpacity={0.7}>
               <Text style={styles.codeLabel}>VOUCHER CODE</Text>
-              <Text style={[styles.codeVal, isExp && { textDecorationLine: 'line-through', color: '#999' }]}>{promo.code}</Text>
-              <Text style={styles.codeSub}>{isExp ? 'This code is no longer valid' : 'Tap to copy and use at checkout'}</Text>
-            </View>
+              <Text style={[styles.codeVal, isExp && { textDecorationLine: 'line-through', color: '#999' }]}>
+                {isCodeVisible ? code : '••••••••'}
+              </Text>
+              <Text style={styles.codeSub}>{isExp ? 'This code is no longer valid' : 'Tap to reveal or hide code'}</Text>
+            </TouchableOpacity>
+
           </Card.Content>
         </Card>
 
-        <Button mode="contained" buttonColor={isExp ? '#CCC' : "#6F4E37"} disabled={isExp} style={styles.btn} onPress={() => navigation.navigate('Home')}>
+        <Button mode="contained" buttonColor={isExp ? '#CCC' : "#6F4E37"} disabled={isExp} style={styles.btn} onPress={handleApplyCode}>
           {isExp ? 'DEAL EXPIRED' : 'ORDER NOW & APPLY CODE'}
         </Button>
       </ScrollView>
@@ -72,7 +105,7 @@ const styles = StyleSheet.create({
   msg: { fontSize: 14, color: '#555', lineHeight: 22, marginBottom: 20 },
   codeBox: { backgroundColor: '#FDF7F2', borderRadius: 15, padding: 20, alignItems: 'center', borderWidth: 2, borderColor: '#6F4E37', borderStyle: 'dashed' },
   codeLabel: { fontSize: 11, fontWeight: 'bold', color: '#6F4E37', letterSpacing: 1 },
-  codeVal: { fontSize: 32, fontWeight: '900', color: '#4A3B32', marginVertical: 5 },
-  codeSub: { fontSize: 10, color: '#A0938A' },
+  codeVal: { fontSize: 32, fontWeight: '900', color: '#4A3B32', letterSpacing: 2, marginVertical: 5 },
+  codeSub: { fontSize: 10, color: '#A0938A', marginTop: 5 },
   btn: { marginTop: 25, borderRadius: 12, paddingVertical: 5 }
 });
