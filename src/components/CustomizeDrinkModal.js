@@ -95,7 +95,25 @@ export default function CustomizeDrinkModal({ visible, onClose, item, onConfirm 
 
         <View style={styles.footer}>
           <View><Text style={styles.fPrice}>₱{totalPrice.toFixed(2)}</Text><Text style={styles.fSub}>{size} • {espresso} • {milk}</Text></View>
-          <Button mode="contained" buttonColor="#6F4E37" onPress={() => onConfirm({ ...item, price: totalPrice, customizations: { size, espresso, milk, syrups, extras, condiments } })} style={styles.btn}>Add to Basket</Button>
+          <Button 
+            mode="contained" 
+            buttonColor="#6F4E37" 
+            onPress={() => onConfirm({ 
+              ...item, 
+              price: totalPrice, 
+              customizations: { 
+                size, 
+                espresso, 
+                milk, 
+                syrups: syrups.map(s => s.l).join(', '), 
+                extras: extras.map(e => e.l).join(', '), 
+                condiments: condiments.join(', ') 
+              } 
+            })} 
+            style={styles.btn}
+          >
+            Add to Basket
+          </Button>
         </View>
       </View></View>
     </Modal>

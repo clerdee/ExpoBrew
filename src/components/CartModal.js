@@ -16,13 +16,30 @@ export default function CartModal({ visible, onClose, cartItems, setCartItems, n
     });
   };
 
+  const renderCustomizations = (cust) => {
+    if (!cust) return null;
+    const txt = Array.isArray(cust) ? cust.join(', ') : typeof cust === 'object' ? Object.values(cust).filter(Boolean).join(', ') : cust;
+    return txt ? <Text style={styles.customTxt} numberOfLines={2}>{txt}</Text> : null;
+  };
+
   return (
     <Modal animationType="slide" transparent visible={visible} onRequestClose={onClose}>
       <View style={styles.overlay}><View style={styles.sheet}>
         <View style={styles.header}><Text variant="titleLarge" style={styles.title}>Your Basket</Text><IconButton icon="close" onPress={onClose} /></View>
-        <FlatList data={cartItems} keyExtractor={i => i.cartId} contentContainerStyle={styles.list} renderItem={({item: i}) => (
+        <FlatList data={cartItems} keyExtractor={i => i.cartId} contentContainerStyle={[styles.list, cartItems.length === 0 && {flex: 1, justifyContent: 'center'}]}
+          ListEmptyComponent={() => (
+            <View style={styles.emptyBox}>
+              <MaterialCommunityIcons name="basket-off-outline" size={70} color="#D2B48C" />
+              <Text style={styles.emptyTxt}>Your basket is empty</Text>
+            </View>
+          )}
+          renderItem={({item: i}) => (
           <View style={styles.item}><Image source={{ uri: i.imageUrl || i.image }} style={styles.img} />
-            <View style={styles.info}><Text style={styles.name}>{i.name}</Text><Text style={styles.price}>₱{(i.price * i.qty).toFixed(2)}</Text></View>
+            <View style={styles.info}>
+              <Text style={styles.name}>{i.name}</Text>
+              {renderCustomizations(i.customizations)}
+              <Text style={styles.price}>₱{(i.price * i.qty).toFixed(2)}</Text>
+            </View>
             <View style={styles.qtyBox}>
               <IconButton icon={i.qty === 1 ? "trash-can-outline" : "minus"} size={18} onPress={() => i.qty === 1 ? setCartItems(p=>p.filter(x=>x.cartId!==i.cartId)) : setCartItems(p=>p.map(x=>x.cartId===i.cartId?{...x,qty:x.qty-1}:x))} />
               <Text style={styles.qtyTxt}>{i.qty}</Text>
@@ -42,10 +59,13 @@ export default function CartModal({ visible, onClose, cartItems, setCartItems, n
     </Modal>
   );
 }
+
 const styles = StyleSheet.create({
   overlay:{flex:1,backgroundColor:'rgba(0,0,0,0.4)',justifyContent:'flex-end'}, sheet:{backgroundColor:'#FAF5F0',borderTopLeftRadius:25,borderTopRightRadius:25,height:'75%'},
   header:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',paddingHorizontal:20,borderBottomWidth:1,borderColor:'#EBE1D7'}, title:{fontWeight:'bold',color:'#4A3B32'},
   list:{padding:20}, item:{flexDirection:'row',backgroundColor:'#fff',borderRadius:15,padding:10,marginBottom:15,alignItems:'center',elevation:2}, img:{width:60,height:60,borderRadius:10},
-  info:{flex:1,marginLeft:15}, name:{fontWeight:'bold'}, price:{color:'#6F4E37',fontWeight:'bold'}, qtyBox:{flexDirection:'row',alignItems:'center',backgroundColor:'#F5F5F5',borderRadius:20},
-  summary:{backgroundColor:'#fff',padding:20,borderTopLeftRadius:25,borderTopRightRadius:25,elevation:10}, row:{flexDirection:'row',justifyContent:'space-between',marginBottom:5}, tVal:{fontWeight:'bold',fontSize:18,color:'#6F4E37'}
+  info:{flex:1,marginLeft:15}, name:{fontWeight:'bold', color: '#4A3B32'}, customTxt:{fontSize:12,color:'#888',marginBottom:4}, price:{color:'#6F4E37',fontWeight:'bold'}, 
+  qtyBox:{flexDirection:'row',alignItems:'center',backgroundColor:'#F5F5F5',borderRadius:20}, qtyTxt:{fontWeight:'bold',fontSize:16},
+  summary:{backgroundColor:'#fff',padding:20,borderTopLeftRadius:25,borderTopRightRadius:25,elevation:10}, row:{flexDirection:'row',justifyContent:'space-between',marginBottom:5}, tVal:{fontWeight:'bold',fontSize:18,color:'#6F4E37'},
+  emptyBox:{alignItems:'center',justifyContent:'center',marginTop:20}, emptyTxt:{marginTop:15,fontSize:18,color:'#888',fontWeight:'bold'}
 });
