@@ -18,7 +18,7 @@ export default function Dashboard({ navigation }) {
       const t = await SecureStore.getItemAsync('userToken');
       const { data } = await axios.get(`${API_BASE_URL}/admin/dashboard`, { headers: { Authorization: `Bearer ${t}` } });
       setStats(data);
-    } catch (e) { Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to load statistics.' }); } 
+    } catch (e) { Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to sync dashboard.' }); } 
     finally { setLoading(false); setRefreshing(false); }
   }, []);
 
@@ -26,11 +26,9 @@ export default function Dashboard({ navigation }) {
 
   const StatCard = ({ title, value, icon, color, prefix = '', onPress }) => (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.8}>
-      <View style={[styles.iconCircle, { backgroundColor: color + '15' }]}><MaterialCommunityIcons name={icon} size={26} color={color} /></View>
-      <View style={styles.cardTextCont}>
-        <Text style={styles.cVal}>{prefix}{value}</Text>
-        <Text style={styles.cTitle}>{title}</Text>
-      </View>
+      <View style={[styles.iconCircle, { backgroundColor: color + '15' }]}><MaterialCommunityIcons name={icon} size={24} color={color} /></View>
+      <Text style={styles.cVal}>{prefix}{value}</Text>
+      <Text style={styles.cTitle}>{title}</Text>
     </TouchableOpacity>
   );
 
@@ -39,31 +37,36 @@ export default function Dashboard({ navigation }) {
       <View style={styles.head}>
         <View style={styles.hRow}>
           <IconButton icon="menu" iconColor="#FFF" size={28} onPress={() => navigation.toggleDrawer()} style={{marginLeft:-10}} />
-          <View><Text style={styles.hTitle}>ExpoBrew Admin</Text><Text style={styles.hSub}>Daily Performance Overview</Text></View>
+          <View><Text style={styles.hTitle}>ExpoBrew Command</Text><Text style={styles.hSub}>Real-time Business Analytics</Text></View>
         </View>
       </View>
 
       {loading ? <ActivityIndicator size="large" color="#4A2E1B" style={{flex:1}} /> : (
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={()=>{setRefreshing(true); fetchStats();}} />}>
           
-          <Text style={styles.secTitle}>Financials</Text>
-          <StatCard title="Gross Revenue (Completed)" value={stats.totalRevenue.toFixed(2)} prefix="₱" icon="currency-php" color="#27AE60" />
+          <Text style={styles.secTitle}>Financial Performance</Text>
+          <TouchableOpacity style={styles.revCard} activeOpacity={0.9}>
+            <View style={styles.revIcon}><MaterialCommunityIcons name="finance" size={30} color="#FFF" /></View>
+            <View>
+              <Text style={styles.revLabel}>Total Revenue</Text>
+              <Text style={styles.revValue}>₱{stats.totalRevenue.toLocaleString(undefined, {minimumFractionDigits: 2})}</Text>
+            </View>
+          </TouchableOpacity>
 
-          <Text style={styles.secTitle}>Operations</Text>
+          <Text style={styles.secTitle}>Inventory & Orders</Text>
           <View style={styles.grid}>
-            <StatCard title="Active Orders" value={stats.activeOrders} icon="coffee-maker" color="#E67E22" onPress={()=>navigation.navigate('Orders')} />
             <StatCard title="Total Products" value={stats.totalProducts} icon="coffee" color="#6F4E37" onPress={()=>navigation.navigate('Products')} />
-            <StatCard title="Customers" value={stats.totalCustomers} icon="account-group" color="#3498DB" onPress={()=>navigation.navigate('Users')} />
-            <StatCard title="Admin Staff" value={stats.totalAdmins} icon="shield-account" color="#607D8B" />
+            <StatCard title="Active Orders" value={stats.activeOrders} icon="clock-fast" color="#E67E22" onPress={()=>navigation.navigate('Orders')} />
           </View>
 
-          <Text style={styles.secTitle}>Quick Access</Text>
-          <View style={styles.actionGrid}>
-            {[ {n:'Orders', i:'clipboard-list', l:'Orders'}, {n:'Products', i:'package-variant', l:'Inventory'}, {n:'Users', i:'account-multiple', l:'Users'}, {n:'Promos', i:'ticket-percent', l:'Promos'} ].map(a => (
-              <TouchableOpacity key={a.n} style={styles.aBtn} onPress={()=>navigation.navigate(a.n)}>
-                <MaterialCommunityIcons name={a.i} size={22} color="#4A2E1B" /><Text style={styles.aBtnTxt}>{a.l}</Text>
-              </TouchableOpacity>
-            ))}
+          <Text style={styles.secTitle}>User Management</Text>
+          <View style={styles.grid}>
+            <StatCard title="Customers" value={stats.totalCustomers} icon="account-group" color="#3498DB" onPress={()=>navigation.navigate('Users')} />
+            <StatCard title="Admin Staff" value={stats.totalAdmins} icon="shield-check" color="#607D8B" />
+          </View>
+
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>Total System Orders: {stats.totalOrders}</Text>
           </View>
         </ScrollView>
       )}
@@ -72,17 +75,16 @@ export default function Dashboard({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  bg: { flex: 1, backgroundColor: '#F8F9FA' },
-  head: { backgroundColor: '#4A2E1B', paddingHorizontal: 20, paddingTop: 60, paddingBottom: 35, borderBottomRightRadius: 30, borderBottomLeftRadius: 30 },
-  hRow: { flexDirection: 'row', alignItems: 'center' }, hTitle: { fontSize: 22, fontWeight: 'bold', color: '#FFF' }, hSub: { fontSize: 13, color: '#D3C4B7' },
-  scroll: { padding: 20, paddingBottom: 40 }, grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
-  card: { backgroundColor: '#FFF', width: (width-50)/2, padding: 18, borderRadius: 20, marginBottom: 15, elevation: 2, flexDirection: 'column', alignItems: 'flex-start' },
-  cardFull: { width: '100%', flexDirection: 'row', alignItems: 'center' },
-  iconCircle: { width: 48, height: 48, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
-  cardTextCont: { marginLeft: 2 },
-  cVal: { fontSize: 20, fontWeight: '900', color: '#333' }, cTitle: { fontSize: 11, color: '#888', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 0.5 },
-  secTitle: { fontSize: 14, fontWeight: '800', color: '#A0A0A0', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 15, marginTop: 10 },
-  actionGrid: { flexDirection: 'row', justifyContent: 'space-between' },
-  aBtn: { backgroundColor: '#FFF', padding: 15, borderRadius: 18, width: (width-75)/4, alignItems: 'center', elevation: 2 },
-  aBtnTxt: { fontSize: 10, fontWeight: 'bold', color: '#4A2E1B', marginTop: 6 }
+  bg: { flex: 1, backgroundColor: '#F4F7F6' },
+  head: { backgroundColor: '#4A2E1B', paddingHorizontal: 25, paddingTop: 60, paddingBottom: 40, borderBottomRightRadius: 35 },
+  hRow: { flexDirection: 'row', alignItems: 'center' }, hTitle: { fontSize: 24, fontWeight: 'bold', color: '#FFF' }, hSub: { fontSize: 13, color: '#D3C4B7', marginTop: 2 },
+  scroll: { padding: 20 }, grid: { flexDirection: 'row', justifyContent: 'space-between' },
+  secTitle: { fontSize: 12, fontWeight: '900', color: '#B0B0B0', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 15, marginTop: 10 },
+  revCard: { backgroundColor: '#27AE60', borderRadius: 20, padding: 20, flexDirection: 'row', alignItems: 'center', marginBottom: 25, elevation: 4 },
+  revIcon: { width: 55, height: 55, borderRadius: 15, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center', marginRight: 20 },
+  revLabel: { color: 'rgba(255,255,255,0.8)', fontSize: 14, fontWeight: '600' }, revValue: { color: '#FFF', fontSize: 28, fontWeight: '900' },
+  card: { backgroundColor: '#FFF', width: (width-55)/2, padding: 20, borderRadius: 24, marginBottom: 15, elevation: 2, alignItems: 'center' },
+  iconCircle: { width: 50, height: 50, borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
+  cVal: { fontSize: 22, fontWeight: '900', color: '#333' }, cTitle: { fontSize: 11, color: '#999', fontWeight: 'bold', marginTop: 4 },
+  footer: { marginTop: 20, alignItems: 'center', opacity: 0.4 }, footerText: { fontSize: 12, fontWeight: '600' }
 });

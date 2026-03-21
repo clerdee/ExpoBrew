@@ -7,8 +7,8 @@ const getDashboardStats = async (req, res) => {
     const totalOrders = await Order.countDocuments();
     const activeOrders = await Order.countDocuments({ status: { $in: ['Pending', 'Preparing', 'Ready'] } });
     const totalProducts = await Product.countDocuments();
-    const totalCustomers = await User.countDocuments({ isAdmin: false });
-    const totalAdmins = await User.countDocuments({ isAdmin: true });
+    const totalCustomers = await User.countDocuments({ role: 'customer' });
+    const totalAdmins = await User.countDocuments({ role: 'admin' });
     
     const revObj = await Order.aggregate([{ $match: { status: 'Completed' } }, { $group: { _id: null, total: { $sum: '$totalPrice' } } }]);
     const totalRevenue = revObj.length > 0 ? revObj[0].total : 0;
