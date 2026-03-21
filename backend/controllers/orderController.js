@@ -1,45 +1,69 @@
 const Order = require('../models/Order');
-const Notification = require('../models/Notification'); 
 
 const createOrder = async (req, res) => {
   try {
-    const { orderItems, totalPrice, shippingAddress, paymentMethod } = req.body;
-    if (orderItems?.length === 0) return res.status(400).json({ message: "No order items" });
-    const order = new Order({ user: req.user._id, orderItems, totalPrice, shippingAddress, paymentMethod });
+    const {
+      orderItems,
+      totalPrice,
+      shippingAddress,
+      paymentMethod,
+      promoCode = '',
+      discountAmount = 0
+    } = req.body;
+
+    if (!orderItems || orderItems.length === 0) {
+      return res.status(400).json({ message: 'No order items' });
+    }
+
+    if (!shippingAddress || !paymentMethod) {
+      return res.status(400).json({ message: 'Shipping address and payment method are required.' });
+    }
+
+    const order = new Order({
+      user: req.user._id,
+      orderItems,
+      shippingAddress,
+      paymentMethod,
+      totalPrice,
+      promoCode,
+      discountAmount
+    });
+
     res.status(201).json(await order.save());
-  } catch (e) { res.status(500).json({ message: "Server Error", error: e.message }); }
+  } catch (e) { res.status(500).json({ message: 'Server Error: Could not create order.' }); }
 };
 
 const getMyOrders = async (req, res) => {
-  try { res.json(await Order.find({ user: req.user._id }).sort({ createdAt: -1 })); } 
-  catch (e) { res.status(500).json({ message: "Fetch Error" }); }
+  try { res.status(200).json(await Order.find({ user: req.user._id }).sort({ createdAt: -1 })); }
+  catch (e) { res.status(500).json({ message: 'Server Error: Could not fetch orders.' }); }
 };
 
 const getAllOrders = async (req, res) => {
-  try { res.json(await Order.find({}).populate('user', 'name email').sort({ createdAt: -1 })); } 
-  catch (e) { res.status(500).json({ message: "Fetch Error" }); }
+  try { res.status(200).json(await Order.find({}).populate('user', 'id name email').sort({ createdAt: -1 })); }
+  catch (e) { res.status(500).json({ message: 'Server Error: Could not fetch all orders.' }); }
 };
 
 const updateOrderStatus = async (req, res) => {
   try {
     const { status } = req.body;
-    const order = await Order.findByIdAndUpdate(req.params.id, { status }, { new: true, runValidators: true });
-    if (!order) return res.status(404).json({ message: "Order not found" });
+    const order = await Order.findById(req.params.id);
 
-    let msg = `Your order #${order._id.toString().slice(-6)} is now ${status.toLowerCase()}.`;
-    if (status === 'Preparing') msg = `☕️ We're preparing your coffee!`;
-    if (status === 'Ready') msg = `✅ Your order is ready!`;
+    if (!order) return res.status(404).json({ message: 'Order not found' });
 
-    await Notification.create({ user: order.user, title: `Order: ${status}`, message: msg, type: 'Order' }).catch(console.error);
-    res.json(order);
-  } catch (e) { res.status(500).json({ message: "Update Failed", error: e.message }); }
+    order.status = status;
+    const updatedOrder = await order.save();
+    
+    res.status(200).json(updatedOrder);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to update order status', error: error.message });
+  }
 };
 
 const deleteOrder = async (req, res) => {
   try {
-    if (await Order.findByIdAndDelete(req.params.id)) res.json({ message: "Deleted" });
-    else res.status(404).json({ message: "Not found" });
-  } catch (e) { res.status(500).json({ message: "Delete Error" }); }
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+    res.status(200).json({ message: 'Order deleted successfully' });
+  } catch (e) { res.status(500).json({ message: 'Server Error: Could not delete order.' }); }
 };
 
 module.exports = { createOrder, getMyOrders, getAllOrders, updateOrderStatus, deleteOrder };

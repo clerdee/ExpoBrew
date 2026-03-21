@@ -10,7 +10,10 @@ const userSchema = new mongoose.Schema({
     enum: ['customer', 'admin'], 
     default: 'customer'         
   },
-
+  phone: { type: String, default: '' },
+  birthday: { type: String, default: '' },
+  address: { type: String, default: '' },
+  isActive: { type: Boolean, default: true },
   profileImage: { type: String, default: null },
   profileImageId: { type: String, default: null },
   favorites: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }]

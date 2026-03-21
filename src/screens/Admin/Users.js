@@ -36,7 +36,6 @@ export default function Users({ navigation }) {
   const handleDeactivate = async (id) => {
     try {
       const token = await SecureStore.getItemAsync('userToken');
-      // Assuming you will have a route like PUT /users/:id/deactivate (or you can pass { isActive: false } to your update route)
       await axios.put(`${API_BASE_URL}/users/${id}/deactivate`, {}, { headers: { Authorization: `Bearer ${token}` } });
       Toast.show({ type: 'success', text1: 'User deactivated successfully' }); fetchUsers();
     } catch (e) { Toast.show({ type: 'error', text1: 'Failed to deactivate user' }); }
@@ -50,6 +49,7 @@ export default function Users({ navigation }) {
 
   const renderItem = ({ item: u }) => {
     const isAdmin = u.role === 'admin' || u.role === 'Admin';
+    const isInactive = u.isActive === false;
     const displayRole = u.role ? u.role.charAt(0).toUpperCase() + u.role.slice(1) : 'User';
     
     return (
@@ -59,11 +59,11 @@ export default function Users({ navigation }) {
           <View style={styles.info}>
             <Text style={styles.name} numberOfLines={1}>{u.name}</Text>
             <Text style={styles.email} numberOfLines={1}>{u.email}</Text>
-            <Chip icon={isAdmin ? "shield-account" : "account"} textStyle={[styles.badgeText, { color: isAdmin ? '#FFF' : '#333' }]} style={[styles.badge, { backgroundColor: isAdmin ? '#4A2E1B' : '#EAEAEA' }]} compact>
-              {displayRole}
+            <Chip icon={isAdmin ? "shield-account" : isInactive ? "account-off" : "account"} textStyle={[styles.badgeText, { color: isAdmin ? '#FFF' : isInactive ? '#FFF' : '#333' }]} style={[styles.badge, { backgroundColor: isAdmin ? '#4A2E1B' : isInactive ? '#9E9E9E' : '#EAEAEA' }]} compact>
+              {isInactive ? `${displayRole} • Inactive` : displayRole}
             </Chip>
           </View>
-          <IconButton icon="account-cancel-outline" size={26} iconColor="#D32F2F" containerColor="#FEEBEE" onPress={() => confirmDeactivate(u._id, u.name)} disabled={isAdmin} style={styles.actionBtn} />
+          <IconButton icon="account-cancel-outline" size={26} iconColor="#D32F2F" containerColor="#FEEBEE" onPress={() => confirmDeactivate(u._id, u.name)} disabled={isAdmin || isInactive} style={styles.actionBtn} />
         </View>
       </Card>
     );
