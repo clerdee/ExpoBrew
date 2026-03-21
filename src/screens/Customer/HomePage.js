@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { View, StyleSheet, FlatList, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from "react-native";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { View, StyleSheet, FlatList, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Dimensions, Image } from "react-native";
 import { Text, Card, IconButton } from "react-native-paper";
 import * as SecureStore from "expo-secure-store";
 import * as SQLite from 'expo-sqlite';
@@ -13,6 +13,8 @@ import Header from "../../components/Header";
 import ProfileModal from "../../components/ProfileModal";
 import CustomizeDrinkModal from "../../components/CustomizeDrinkModal";
 
+const { width } = Dimensions.get('window');
+const BANNER_WIDTH = width - 40; 
 const CATEGORIES = ['All', 'Brewed', 'Espresso', 'Frappuccino', 'Refreshers', 'Non-Coffee', 'Tea'];
 
 const BANNERS = [
@@ -27,9 +29,17 @@ export default function HomePage() {
   const [cartItems, setCartItems] = useState([]), [selectedItem, setSelectedItem] = useState(null);
   const [loading, setLoading] = useState(true), [activeCat, setActiveCat] = useState('All'), [favorites, setFavorites] = useState([]);
   const [currentSlide, setCurrentSlide] = useState(0);
+  
+  const bannerRef = useRef(null);
 
   useEffect(() => {
-    const timer = setInterval(() => setCurrentSlide(prev => (prev + 1) % BANNERS.length), 5000);
+    const timer = setInterval(() => {
+      setCurrentSlide(prev => {
+        const next = (prev + 1) % BANNERS.length;
+        bannerRef.current?.scrollToIndex({ index: next, animated: true });
+        return next;
+      });
+    }, 3000);
     return () => clearInterval(timer);
   }, []);
 
@@ -77,8 +87,11 @@ export default function HomePage() {
     setCustVis(false); setCartVis(true);
   };
 
-  const nextSlide = () => setCurrentSlide(prev => (prev + 1) % BANNERS.length);
-  const prevSlide = () => setCurrentSlide(prev => (prev - 1 + BANNERS.length) % BANNERS.length);
+  const navigateSlide = (direction) => {
+    const next = (currentSlide + direction + BANNERS.length) % BANNERS.length;
+    setCurrentSlide(next);
+    bannerRef.current?.scrollToIndex({ index: next, animated: true });
+  };
 
   const filtered = useMemo(() => products.filter(p => activeCat === 'All' || p.category === activeCat), [products, activeCat]);
 
@@ -88,20 +101,33 @@ export default function HomePage() {
       <Text variant="titleMedium" style={styles.secTitle}>Daily discounts</Text>
       
       <Card style={styles.banner}>
-        <Card.Cover source={BANNERS[currentSlide].img} style={styles.bannerImg} />
-        <View style={styles.bannerOver}>
-          <Text style={styles.bTitle}>{BANNERS[currentSlide].title}</Text>
-          <Text style={styles.bSub}>{BANNERS[currentSlide].sub}</Text>
-          <View style={styles.bBtn}><Text style={{fontWeight:"bold",fontSize:10,color:"#4A3B32"}}>ORDER NOW</Text></View>
-        </View>
+        <FlatList
+          ref={bannerRef}
+          data={BANNERS}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          keyExtractor={item => item.id.toString()}
+          getItemLayout={(data, index) => ({ length: BANNER_WIDTH, offset: BANNER_WIDTH * index, index })}
+          onMomentumScrollEnd={(e) => setCurrentSlide(Math.round(e.nativeEvent.contentOffset.x / BANNER_WIDTH))}
+          renderItem={({ item }) => (
+            <View style={{ width: BANNER_WIDTH, height: 220 }}>
+              <Image source={item.img} style={styles.bannerImg} />
+              <View style={styles.bannerOver}>
+                <Text style={styles.bTitle}>{item.title}</Text>
+                <Text style={styles.bSub}>{item.sub}</Text>
+                <View style={styles.bBtn}><Text style={{fontWeight:"bold",fontSize:10,color:"#4A3B32"}}>ORDER NOW</Text></View>
+              </View>
+            </View>
+          )}
+        />
         
-        <View style={styles.slideControls}>
-          <IconButton icon="chevron-left" size={30} iconColor="#fff" onPress={prevSlide} style={styles.navBtn} />
-          <IconButton icon="chevron-right" size={30} iconColor="#fff" onPress={nextSlide} style={styles.navBtn} />
+        <View style={styles.slideControls} pointerEvents="box-none">
+          <IconButton icon="chevron-left" size={30} iconColor="#fff" onPress={() => navigateSlide(-1)} style={styles.navBtn} />
+          <IconButton icon="chevron-right" size={30} iconColor="#fff" onPress={() => navigateSlide(1)} style={styles.navBtn} />
         </View>
 
-        {/* 3 DOTS PAGINATION */}
-        <View style={styles.dotsContainer}>
+        <View style={styles.dotsContainer} pointerEvents="none">
           {BANNERS.map((_, i) => (
             <View key={i} style={[styles.dot, currentSlide === i && styles.activeDot]} />
           ))}
@@ -116,7 +142,16 @@ export default function HomePage() {
   return (
     <View style={styles.container}>
       {loading ? <ActivityIndicator size="large" color="#6F4E37" style={{flex:1}} /> : (
-        <FlatList data={filtered} extraData={currentSlide} renderItem={({ item }) => <CardComponent item={item} onAddToCart={() => {setSelectedItem(item); setCustVis(true)}} onFavorite={() => handleFavorite(item)} isFavorite={favorites.includes(item._id)} />} keyExtractor={i => i._id} numColumns={2} columnWrapperStyle={styles.colWrap} ListHeaderComponent={renderHeader} contentContainerStyle={styles.list} showsVerticalScrollIndicator={false} />
+        <FlatList 
+          data={filtered} 
+          renderItem={({ item }) => <CardComponent item={item} onAddToCart={() => {setSelectedItem(item); setCustVis(true)}} onFavorite={() => handleFavorite(item)} isFavorite={favorites.includes(item._id)} />} 
+          keyExtractor={i => i._id} 
+          numColumns={2} 
+          columnWrapperStyle={styles.colWrap} 
+          ListHeaderComponent={renderHeader()} // FIXED: Calling it as a function prevents remounting
+          contentContainerStyle={styles.list} 
+          showsVerticalScrollIndicator={false} 
+        />
       )}
       <CustomizeDrinkModal visible={custVis} onClose={() => setCustVis(false)} item={selectedItem} onConfirm={confirmCustomization} />
       <CartModal visible={cartVis} onClose={() => setCartVis(false)} cartItems={cartItems} setCartItems={setCartItems} />
@@ -129,8 +164,8 @@ export default function HomePage() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#FAF5F0", paddingTop: 50 }, list: { paddingHorizontal: 20, paddingBottom: 100 },
   secTitle: { fontWeight: "bold", color: "#4A3B32", marginBottom: 12, marginTop: 5 }, 
-  banner: { marginBottom: 25, borderRadius: 15, overflow: "hidden", height: 220 }, // Made Taller
-  bannerImg: { height: 220 }, // Made Taller
+  banner: { marginBottom: 25, borderRadius: 15, overflow: "hidden", height: 220, backgroundColor: '#EFEFEF' }, 
+  bannerImg: { width: '100%', height: '100%', resizeMode: 'cover' }, 
   bannerOver: { position: "absolute", left: 20, top: 55, zIndex: 1 }, 
   bTitle: { color: "#fff", fontWeight: "900", fontSize: 24, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: {width: 1, height: 1}, textShadowRadius: 4 },
   bSub: { color: "#fff", fontSize: 14, marginBottom: 8, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: {width: 1, height: 1}, textShadowRadius: 4 }, 
