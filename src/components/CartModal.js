@@ -1,45 +1,68 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, StyleSheet, Modal, FlatList, Image } from 'react-native';
 import { Text, IconButton, Button, Divider } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import Toast from 'react-native-toast-message';
+import axios from 'axios';
+import * as SecureStore from 'expo-secure-store';
+import { API_BASE_URL } from '../configs/config';
 
 export default function CartModal({ visible, onClose, cartItems = [], setCartItems }) {
+  const [loading, setLoading] = useState(false);
+
   const updateQty = (id, inc) => setCartItems(p => p.map(i => i.cartId === id ? { ...i, qty: Math.max(1, i.qty + inc) } : i));
   const removeItem = (id) => setCartItems(p => p.filter(i => i.cartId !== id));
   
   const subtotal = cartItems.reduce((s, i) => s + (i.price * i.qty), 0);
-  const tax = subtotal * 0.12;
-  const total = subtotal + tax;
+  const tax = subtotal * 0.12, total = subtotal + tax;
 
-  const renderItem = ({ item: i }) => {
-    const cust = i.customizations;
-    return (
-      <View style={styles.item}>
-        <Image source={{ uri: i.imageUrl || i.image }} style={styles.img} />
-        <View style={styles.info}>
-          <Text variant="titleMedium" style={styles.name}>{i.name}</Text>
-          {cust && (
-            <Text variant="bodySmall" style={styles.note} numberOfLines={2}>
-              {cust.size} • {cust.milk} • {cust.espresso}
-              {cust.syrups?.length > 0 ? ` • ${cust.syrups.map(s => s.l).join(', ')}` : ''}
-              {cust.extras?.length > 0 ? ` • ${cust.extras.map(e => e.l).join(', ')}` : ''}
-              {cust.condiments?.length > 0 ? ` • ${cust.condiments.join(', ')}` : ''}
-            </Text>
-          )}
-          <Text variant="titleMedium" style={styles.price}>₱{(i.price * i.qty).toFixed(2)}</Text>
-        </View>
-        <View style={styles.qtyBox}>
-          {i.qty === 1 ? <IconButton icon="trash-can-outline" iconColor="#E74C3C" size={18} onPress={()=>removeItem(i.cartId)} style={styles.qtyBtn} />
-                       : <IconButton icon="minus" size={18} iconColor="#6F4E37" onPress={()=>updateQty(i.cartId, -1)} style={styles.qtyBtn} />}
-          <Text style={styles.qtyTxt}>{i.qty}</Text>
-          <IconButton icon="plus" size={18} iconColor="#6F4E37" onPress={()=>updateQty(i.cartId, 1)} style={styles.qtyBtn} />
-        </View>
-      </View>
-    );
+  const handleCheckout = async () => {
+    if (cartItems.length === 0) return;
+    setLoading(true);
+    try {
+      const token = await SecureStore.getItemAsync('userToken');
+      const payload = {
+        orderItems: cartItems.map(i => ({ name: i.name, qty: i.qty, image: i.imageUrl || i.image, price: i.price, customizations: i.customizations })),
+        totalPrice: total
+      };
+      
+      await axios.post(`${API_BASE_URL}/orders`, payload, { headers: { Authorization: `Bearer ${token}` } });
+      
+      Toast.show({ type: 'success', text1: 'Order Placed!', text2: 'Your coffee is being prepared.' });
+      setCartItems([]); 
+      onClose();
+    } catch (error) {
+      console.error("Checkout Error:", error);
+      Toast.show({ type: 'error', text1: 'Checkout Failed', text2: 'Something went wrong. Please try again.' });
+    } finally {
+      setLoading(false);
+    }
   };
 
+  const renderItem = ({ item: i }) => (
+    <View style={styles.item}>
+      <Image source={{ uri: i.imageUrl || i.image }} style={styles.img} />
+      <View style={styles.info}>
+        <Text variant="titleMedium" style={styles.name}>{i.name}</Text>
+        {i.customizations && (
+          <Text variant="bodySmall" style={styles.note} numberOfLines={2}>
+            {i.customizations.size} • {i.customizations.milk} • {i.customizations.espresso}
+            {i.customizations.syrups?.length > 0 ? ` • ${i.customizations.syrups.map(s => s.l).join(', ')}` : ''}
+          </Text>
+        )}
+        <Text variant="titleMedium" style={styles.price}>₱{(i.price * i.qty).toFixed(2)}</Text>
+      </View>
+      <View style={styles.qtyBox}>
+        {i.qty === 1 ? <IconButton icon="trash-can-outline" iconColor="#E74C3C" size={18} onPress={()=>removeItem(i.cartId)} style={styles.qtyBtn} />
+                     : <IconButton icon="minus" size={18} iconColor="#6F4E37" onPress={()=>updateQty(i.cartId, -1)} style={styles.qtyBtn} />}
+        <Text style={styles.qtyTxt}>{i.qty}</Text>
+        <IconButton icon="plus" size={18} iconColor="#6F4E37" onPress={()=>updateQty(i.cartId, 1)} style={styles.qtyBtn} />
+      </View>
+    </View>
+  );
+
   return (
-    <Modal animationType="slide" transparent={true} visible={visible} onRequestClose={onClose}>
+    <Modal animationType="slide" transparent visible={visible} onRequestClose={onClose}>
       <View style={styles.overlay}><View style={styles.sheet}>
         <View style={styles.header}><Text variant="titleLarge" style={styles.title}>Your Basket</Text><IconButton icon="close" size={24} onPress={onClose} /></View>
         <FlatList data={cartItems} renderItem={renderItem} keyExtractor={i => i.cartId} showsVerticalScrollIndicator={false} contentContainerStyle={styles.list} ListEmptyComponent={
@@ -51,7 +74,7 @@ export default function CartModal({ visible, onClose, cartItems = [], setCartIte
             <View style={styles.row}><Text style={styles.sTxt}>VAT (12%)</Text><Text style={styles.sVal}>₱{tax.toFixed(2)}</Text></View>
             <Divider style={{ marginVertical: 10 }} />
             <View style={[styles.row, { marginBottom: 15 }]}><Text style={styles.tTxt}>Total</Text><Text style={styles.tVal}>₱{total.toFixed(2)}</Text></View>
-            <Button mode="contained" buttonColor="#6F4E37" style={{ borderRadius: 12 }} contentStyle={{ height: 50 }} labelStyle={{ fontSize: 16, fontWeight: 'bold' }} onPress={() => { console.log('Checkout'); onClose(); }}>Checkout</Button>
+            <Button mode="contained" buttonColor="#6F4E37" loading={loading} disabled={loading} style={{ borderRadius: 12 }} contentStyle={{ height: 50 }} labelStyle={{ fontSize: 16, fontWeight: 'bold' }} onPress={handleCheckout}>Checkout</Button>
           </View>
         )}
       </View></View>
