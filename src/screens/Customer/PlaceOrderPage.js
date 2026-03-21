@@ -57,6 +57,7 @@ export default function PlaceOrderPage({ route, navigation }) {
       
       const payload = {
         orderItems: cartItems.map(i => ({
+          product: i._id || i.product || null,
           name: i.name || "Unknown Item",
           qty: i.qty || 1,
           price: i.price || 0,
