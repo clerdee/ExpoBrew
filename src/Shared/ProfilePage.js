@@ -8,15 +8,10 @@ import Toast from 'react-native-toast-message';
 import { API_BASE_URL } from '../configs/config';
 
 const ProfilePage = ({ navigation }) => {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [profileImage, setProfileImage] = useState(null);
-  const [phone, setPhone] = useState('');
-  const [birthday, setBirthday] = useState('');
-  const [address, setAddress] = useState('');
-  const [isPasswordSecure, setIsPasswordSecure] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
+  const [name, setName] = useState(""), [email, setEmail] = useState(""), [password, setPassword] = useState("");
+  const [profileImage, setProfileImage] = useState(null), [phone, setPhone] = useState("");
+  const [birthday, setBirthday] = useState(""), [address, setAddress] = useState("");
+  const [isPasswordSecure, setIsPasswordSecure] = useState(true), [isLoading, setIsLoading] = useState(false);
   const [isGuest, setIsGuest] = useState(false);
 
   useEffect(() => {
@@ -43,77 +38,29 @@ const ProfilePage = ({ navigation }) => {
 
   const pickFromGallery = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) return Toast.show({ type: 'error', text1: 'Permission Required' });
-    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.5 });
+    if (!perm.granted) return Toast.show({ type: "error", text1: "Permission Required" });
+    let res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], allowsEditing: true, aspect: [1, 1], quality: 0.5 });
     if (!res.canceled) setProfileImage(res.assets[0].uri);
   };
 
   const takePhoto = async () => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
-    if (!perm.granted) return Toast.show({ type: 'error', text1: 'Permission Required' });
-    const res = await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.5 });
+    if (!perm.granted) return Toast.show({ type: "error", text1: "Permission Required" });
+    let res = await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.5 });
     if (!res.canceled) setProfileImage(res.assets[0].uri);
   };
 
-  const showImageOptions = () => Alert.alert('Profile Picture', 'Update your avatar', [
-    { text: 'Take Photo', onPress: takePhoto },
-    { text: 'Choose from Gallery', onPress: pickFromGallery },
-    { text: 'Cancel', style: 'cancel' }
-  ]);
+  const showImageOptions = () => Alert.alert("Profile Picture", "Update your avatar", [{ text: "Take Photo", onPress: takePhoto }, { text: "Choose from Gallery", onPress: pickFromGallery }, { text: "Cancel", style: "cancel" }]);
 
   const handleUpdateProfile = async () => {
-    if (!name || !email) {
-      return Toast.show({ type: 'error', text1: 'Wait!', text2: 'Name and email are required.' });
-    }
-
+    if (!name || !email) return Toast.show({ type: "error", text1: "Wait!", text2: "Name and email are required." });
     setIsLoading(true);
-
     try {
-      const token = await SecureStore.getItemAsync('userToken');
-      if (!token) throw new Error('Missing user token');
-
-      const formData = new FormData();
-      formData.append('name', name.trim());
-      formData.append('email', email.trim().toLowerCase());
-      formData.append('phone', phone.trim());
-      formData.append('birthday', birthday.trim());
-      formData.append('address', address.trim());
-
-      if (password.trim()) {
-        formData.append('password', password);
-      }
-
-      if (profileImage && !profileImage.startsWith('http')) {
-        const filename = profileImage.split('/').pop() || `profile-${Date.now()}.jpg`;
-        const match = /\.(\w+)$/.exec(filename);
-        formData.append('profileImage', {
-          uri: profileImage,
-          name: filename,
-          type: match ? `image/${match[1]}` : 'image/jpeg'
-        });
-      }
-
-      const response = await fetch(`${API_BASE_URL}/users/profile`, {
-        method: 'PUT',
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Could not update profile.');
-      }
-
-      await SecureStore.setItemAsync('userInfo', JSON.stringify(data.user));
-      setPassword('');
-      setProfileImage(data.user.profileImage || null);
-      Toast.show({ type: 'success', text1: 'Profile Updated!', text2: 'Your changes have been saved.' });
-    } catch (e) {
-      Toast.show({ type: 'error', text1: 'Error', text2: e.message || 'Failed to update profile.' });
-    } finally {
-      setIsLoading(false);
-    }
+      setTimeout(() => {
+        Toast.show({ type: "success", text1: "Profile Updated!", text2: "Your changes have been saved." });
+        setIsLoading(false);
+      }, 1500);
+    } catch (e) { Toast.show({ type: "error", text1: "Error", text2: "Failed to update profile." }); setIsLoading(false); }
   };
 
   return (

@@ -14,24 +14,22 @@ import ProfileModal from '../../components/ProfileModal';
 import CustomizeDrinkModal from '../../components/CustomizeDrinkModal';
 
 const { width } = Dimensions.get('window');
-const BANNER_WIDTH = width - 40;
+const BANNER_WIDTH = width - 40; 
 const CATEGORIES = ['All', 'Brewed', 'Espresso', 'Frappuccino', 'Refreshers', 'Non-Coffee', 'Tea'];
 
 const BANNERS = [
-  { id: 1, img: require('../../../assets/pic1.jpg'), title: 'MORNING BREW', sub: '20% OFF ESPRESSO' },
-  { id: 2, img: require('../../../assets/pic2.jpg'), title: 'NEW ARRIVAL', sub: 'TRY OUR MATCHA' },
-  { id: 3, img: require('../../../assets/pic3.jpg'), title: 'HAPPY HOUR', sub: 'BUY 1 GET 1 FREE' }
+  { id: 1, img: require('../../../assets/pic1.jpg'), title: "MORNING BREW", sub: "20% OFF ESPRESSO" },
+  { id: 2, img: require('../../../assets/pic2.jpg'), title: "NEW ARRIVAL", sub: "TRY OUR MATCHA" },
+  { id: 3, img: require('../../../assets/pic3.jpg'), title: "HAPPY HOUR", sub: "BUY 1 GET 1 FREE" }
 ];
 
-export default function HomePage() {
+export default function HomePage({ navigation }) {
   const [cartVis, setCartVis] = useState(false), [authVis, setAuthVis] = useState(false), [profVis, setProfVis] = useState(false);
   const [custVis, setCustVis] = useState(false), [user, setUser] = useState(null), [products, setProducts] = useState([]);
   const [cartItems, setCartItems] = useState([]), [selectedItem, setSelectedItem] = useState(null);
   const [loading, setLoading] = useState(true), [activeCat, setActiveCat] = useState('All'), [favorites, setFavorites] = useState([]);
-  const [currentSlide, setCurrentSlide] = useState(0), [searchQuery, setSearchQuery] = useState('');
-  const [filterVis, setFilterVis] = useState(false), [minPrice, setMinPrice] = useState(''), [maxPrice, setMaxPrice] = useState('');
-  const [tempCategory, setTempCategory] = useState('All'), [tempMinPrice, setTempMinPrice] = useState(''), [tempMaxPrice, setTempMaxPrice] = useState('');
-
+  const [currentSlide, setCurrentSlide] = useState(0);
+  
   const bannerRef = useRef(null);
 
   useEffect(() => {
@@ -52,41 +50,31 @@ export default function HomePage() {
       const saved = await db.getFirstAsync('SELECT cart_data FROM cart_table WHERE id = 1;');
       if (saved?.cart_data) setCartItems(JSON.parse(saved.cart_data));
 
-      const uStr = await SecureStore.getItemAsync('userInfo');
-      const token = await SecureStore.getItemAsync('userToken');
+      const uStr = await SecureStore.getItemAsync("userInfo"), token = await SecureStore.getItemAsync("userToken");
       if (uStr) setUser(JSON.parse(uStr));
-
+      
       const [pRes, fRes] = await Promise.all([
-        axios.get(`${API_BASE_URL}/products`, {
-          params: {
-            search: searchQuery.trim() || undefined,
-            category: activeCat !== 'All' ? activeCat : undefined,
-            minPrice: minPrice || undefined,
-            maxPrice: maxPrice || undefined
-          }
-        }),
+        axios.get(`${API_BASE_URL}/products`),
         token ? axios.get(`${API_BASE_URL}/users/favorites`, { headers: { Authorization: `Bearer ${token}` } }) : { data: [] }
       ]);
       setProducts(pRes.data);
       setFavorites(fRes.data.map(f => f._id));
-    } catch (e) { console.error('Init Error:', e); } finally { setLoading(false); }
+    } catch (e) { console.error("Init Error:", e); } finally { setLoading(false); }
   };
 
   useFocusEffect(useCallback(() => { loadData(); }, [searchQuery, activeCat, minPrice, maxPrice]));
 
   useEffect(() => {
-    (async () => {
-      if (!loading) {
-        const db = await SQLite.openDatabaseAsync('coffeecart.db');
-        await db.runAsync('INSERT OR REPLACE INTO cart_table (id, cart_data) VALUES (1, ?);', JSON.stringify(cartItems));
-      }
-    })();
+    (async () => { if (!loading) {
+      const db = await SQLite.openDatabaseAsync('coffeecart.db');
+      await db.runAsync('INSERT OR REPLACE INTO cart_table (id, cart_data) VALUES (1, ?);', JSON.stringify(cartItems));
+    }})();
   }, [cartItems, loading]);
 
   const handleFavorite = async (p) => {
     try {
-      const token = await SecureStore.getItemAsync('userToken');
-      if (!token) return setAuthVis(true);
+      const token = await SecureStore.getItemAsync("userToken");
+      if (!token) return setAuthVis(true); // Pops AuthModal if guest
       const res = await axios.post(`${API_BASE_URL}/users/favorites/${p._id}`, {}, { headers: { Authorization: `Bearer ${token}` } });
       setFavorites(res.data.favorites);
     } catch (e) { Alert.alert('Error', 'Could not update favorites'); }
@@ -97,10 +85,9 @@ export default function HomePage() {
     setCustVis(false); setCartVis(true);
   };
 
-  const navigateSlide = (direction) => {
-    const next = (currentSlide + direction + BANNERS.length) % BANNERS.length;
-    setCurrentSlide(next);
-    bannerRef.current?.scrollToIndex({ index: next, animated: true });
+  const navigateSlide = (dir) => {
+    const next = (currentSlide + dir + BANNERS.length) % BANNERS.length;
+    setCurrentSlide(next); bannerRef.current?.scrollToIndex({ index: next, animated: true });
   };
 
   const filtered = useMemo(() => products.filter(p => {
@@ -141,7 +128,7 @@ export default function HomePage() {
     <View>
       <Header user={user} cartItemCount={cartItems.length} onAvatarPress={() => user ? setProfVis(true) : setAuthVis(true)} onCartPress={() => setCartVis(true)} />
       <Text variant="titleMedium" style={styles.secTitle}>Daily discounts</Text>
-
+      
       <Card style={styles.banner}>
         <FlatList
           ref={bannerRef}
@@ -158,12 +145,12 @@ export default function HomePage() {
               <View style={styles.bannerOver}>
                 <Text style={styles.bTitle}>{item.title}</Text>
                 <Text style={styles.bSub}>{item.sub}</Text>
-                <View style={styles.bBtn}><Text style={{ fontWeight: 'bold', fontSize: 10, color: '#4A3B32' }}>ORDER NOW</Text></View>
+                <View style={styles.bBtn}><Text style={{fontWeight:"bold",fontSize:10,color:"#4A3B32"}}>ORDER NOW</Text></View>
               </View>
             </View>
           )}
         />
-
+        
         <View style={styles.slideControls} pointerEvents="box-none">
           <IconButton icon="chevron-left" size={30} iconColor="#fff" onPress={() => navigateSlide(-1)} style={styles.navBtn} />
           <IconButton icon="chevron-right" size={30} iconColor="#fff" onPress={() => navigateSlide(1)} style={styles.navBtn} />
@@ -175,21 +162,6 @@ export default function HomePage() {
           ))}
         </View>
       </Card>
-
-      <View style={styles.searchRow}>
-        <Searchbar
-          placeholder="Search drinks or descriptions..."
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          style={styles.searchBar}
-          iconColor="#6F4E37"
-          inputStyle={{ fontSize: 14 }}
-        />
-        <TouchableOpacity style={styles.filterBtn} onPress={openFilters} activeOpacity={0.8}>
-          <IconButton icon="tune-variant" size={22} iconColor="#4A3B32" style={{ margin: 0 }} />
-          {activeFilterCount > 0 && <View style={styles.filterBadge}><Text style={styles.filterBadgeText}>{activeFilterCount}</Text></View>}
-        </TouchableOpacity>
-      </View>
 
       <Text variant="titleMedium" style={styles.secTitle}>Categories</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.catScroll}>
@@ -212,31 +184,24 @@ export default function HomePage() {
 
   return (
     <View style={styles.container}>
-      {loading ? <ActivityIndicator size="large" color="#6F4E37" style={{ flex: 1 }} /> : (
-        <FlatList
-          data={filtered}
+      {loading ? <ActivityIndicator size="large" color="#6F4E37" style={{flex:1}} /> : (
+        <FlatList 
+          data={filtered} 
           renderItem={({ item }) => (
-            <CardComponent
-              item={item}
-              isGuest={!user}
-              onAddToCart={() => { setSelectedItem(item); setCustVis(true); }}
-              onFavorite={() => handleFavorite(item)}
-              isFavorite={favorites.includes(item._id)}
+            <CardComponent 
+              item={item} 
+              isGuest={!user} 
+              onAddToCart={() => {setSelectedItem(item); setCustVis(true)}} 
+              onFavorite={() => handleFavorite(item)} 
+              isFavorite={favorites.includes(item._id)} 
             />
-          )}
-          keyExtractor={i => i._id}
-          numColumns={2}
-          columnWrapperStyle={styles.colWrap}
-          ListHeaderComponent={renderHeader()}
-          contentContainerStyle={styles.list}
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyTitle}>No drinks matched your search.</Text>
-              <Text style={styles.emptySubtitle}>Try another keyword or adjust the category/price range.</Text>
-              <Button mode="outlined" textColor="#6F4E37" style={styles.emptyBtn} onPress={clearFilters}>Reset Filters</Button>
-            </View>
-          }
+          )} 
+          keyExtractor={i => i._id} 
+          numColumns={2} 
+          columnWrapperStyle={styles.colWrap} 
+          ListHeaderComponent={renderHeader()} 
+          contentContainerStyle={styles.list} 
+          showsVerticalScrollIndicator={false} 
         />
       )}
 
@@ -294,7 +259,7 @@ export default function HomePage() {
       </Modal>
 
       <CustomizeDrinkModal visible={custVis} onClose={() => setCustVis(false)} item={selectedItem} onConfirm={confirmCustomization} />
-      <CartModal visible={cartVis} onClose={() => setCartVis(false)} cartItems={cartItems} setCartItems={setCartItems} />
+      <CartModal visible={cartVis} onClose={() => setCartVis(false)} cartItems={cartItems} setCartItems={setCartItems} navigation={navigation} />
       <AuthModal visible={authVis} onClose={() => setAuthVis(false)} />
       <ProfileModal visible={profVis} onClose={() => setProfVis(false)} user={user} />
     </View>
@@ -302,48 +267,19 @@ export default function HomePage() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAF5F0', paddingTop: 50 },
-  list: { paddingHorizontal: 20, paddingBottom: 100 },
-  secTitle: { fontWeight: 'bold', color: '#4A3B32', marginBottom: 12, marginTop: 5 },
-  banner: { marginBottom: 25, borderRadius: 15, overflow: 'hidden', height: 220, backgroundColor: '#EFEFEF' },
-  bannerImg: { width: '100%', height: '100%', resizeMode: 'cover' },
-  bannerOver: { position: 'absolute', left: 20, top: 55, zIndex: 1 },
-  bTitle: { color: '#fff', fontWeight: '900', fontSize: 24, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 4 },
-  bSub: { color: '#fff', fontSize: 14, marginBottom: 8, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 4 },
-  bBtn: { backgroundColor: '#fff', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, alignSelf: 'flex-start', elevation: 3 },
+  container: { flex: 1, backgroundColor: "#FAF5F0", paddingTop: 50 }, list: { paddingHorizontal: 20, paddingBottom: 100 },
+  secTitle: { fontWeight: "bold", color: "#4A3B32", marginBottom: 12, marginTop: 5 }, 
+  banner: { marginBottom: 25, borderRadius: 15, overflow: "hidden", height: 220, backgroundColor: '#EFEFEF' }, 
+  bannerImg: { width: '100%', height: '100%', resizeMode: 'cover' }, 
+  bannerOver: { position: "absolute", left: 20, top: 55, zIndex: 1 }, 
+  bTitle: { color: "#fff", fontWeight: "900", fontSize: 24, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: {width: 1, height: 1}, textShadowRadius: 4 },
+  bSub: { color: "#fff", fontSize: 14, marginBottom: 8, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: {width: 1, height: 1}, textShadowRadius: 4 }, 
+  bBtn: { backgroundColor: "#fff", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, alignSelf: "flex-start", elevation: 3 },
   slideControls: { position: 'absolute', width: '100%', height: '100%', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   navBtn: { backgroundColor: 'rgba(0,0,0,0.2)', marginHorizontal: 5 },
   dotsContainer: { position: 'absolute', bottom: 12, width: '100%', flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.4)', marginHorizontal: 4 },
   activeDot: { backgroundColor: '#fff', width: 20 },
-  searchRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
-  searchBar: { flex: 1, backgroundColor: '#fff', borderRadius: 16 },
-  filterBtn: { marginLeft: 10, backgroundColor: '#fff', borderRadius: 16, width: 54, height: 54, justifyContent: 'center', alignItems: 'center', position: 'relative' },
-  filterBadge: { position: 'absolute', top: 6, right: 6, backgroundColor: '#6F4E37', minWidth: 18, height: 18, borderRadius: 9, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 4 },
-  filterBadgeText: { color: '#fff', fontSize: 10, fontWeight: 'bold' },
-  catScroll: { flexDirection: 'row', marginBottom: 16 },
-  catPill: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 25, marginRight: 10, backgroundColor: '#fff', borderWidth: 1, borderColor: '#EFEFEF' },
-  catOn: { backgroundColor: '#6F4E37', borderColor: '#6F4E37' },
-  catText: { color: '#6F4E37', fontWeight: '600' },
-  catTextOn: { color: '#fff' },
-  activeFiltersRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 },
-  activeFilterChip: { marginRight: 8, marginBottom: 8, backgroundColor: '#EBE1D7' },
-  clearText: { color: '#8B5E3C', fontWeight: '700', marginBottom: 8 },
-  colWrap: { justifyContent: 'space-between' },
-  emptyState: { alignItems: 'center', paddingVertical: 40, paddingHorizontal: 20 },
-  emptyTitle: { fontSize: 18, fontWeight: 'bold', color: '#4A3B32', marginBottom: 8, textAlign: 'center' },
-  emptySubtitle: { color: '#7A7A7A', textAlign: 'center', marginBottom: 16, lineHeight: 20 },
-  emptyBtn: { borderColor: '#6F4E37' },
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: '#fff', borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24 },
-  sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  sheetTitle: { fontSize: 22, fontWeight: 'bold', color: '#4A3B32' },
-  filterSectionTitle: { fontSize: 13, fontWeight: '700', color: '#A0A0A0', textTransform: 'uppercase', marginTop: 12, marginBottom: 12 },
-  chipWrap: { flexDirection: 'row', flexWrap: 'wrap' },
-  filterChip: { marginRight: 8, marginBottom: 8, backgroundColor: '#F3F3F3' },
-  filterChipActive: { backgroundColor: '#6F4E37' },
-  filterChipText: { color: '#555', fontWeight: '600' },
-  filterChipTextActive: { color: '#fff', fontWeight: '700' },
-  filterInput: { backgroundColor: '#fff', marginBottom: 12 },
-  sheetActions: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }
+  catScroll: { flexDirection: "row", marginBottom: 20 }, catPill: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 25, marginRight: 10, backgroundColor: "#fff", borderWidth: 1, borderColor: "#EFEFEF" },
+  catOn: { backgroundColor: "#6F4E37", borderColor: "#6F4E37" }, catText: { color: "#6F4E37", fontWeight: "600" }, catTextOn: { color: "#fff" }, colWrap: { justifyContent: "space-between" }
 });

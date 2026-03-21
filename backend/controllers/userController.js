@@ -5,8 +5,8 @@ const cloudinary = require('cloudinary').v2;
 const { buildUserPayload } = require('./authController');
 
 const getAllUsers = async (req, res) => {
-  try { res.status(200).json(await User.find({}).select('-password')); }
-  catch (e) { res.status(500).json({ message: 'Server Error: Could not fetch users.' }); }
+  try { res.status(200).json(await User.find({}).select('-password')); } 
+  catch (e) { res.status(500).json({ message: "Server Error: Could not fetch users." }); }
 };
 
 const deleteUser = async (req, res) => {
@@ -14,58 +14,8 @@ const deleteUser = async (req, res) => {
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ message: 'User not found.' });
     await user.deleteOne();
-    res.status(200).json({ message: 'User deleted successfully!' });
-  } catch (e) { res.status(500).json({ message: 'Server Error: Could not delete user.' }); }
-};
-
-const deactivateUser = async (req, res) => {
-  try {
-    const user = await User.findById(req.params.id);
-    if (!user) return res.status(404).json({ message: 'User not found.' });
-    if (user.role === 'admin') return res.status(400).json({ message: 'Admin accounts cannot be deactivated here.' });
-
-    user.isActive = false;
-    await user.save();
-
-    res.status(200).json({ message: 'User deactivated successfully.' });
-  } catch (e) {
-    res.status(500).json({ message: 'Server Error: Could not deactivate user.' });
-  }
-};
-
-const updateProfile = async (req, res) => {
-  try {
-    const user = await User.findById(req.user._id);
-    if (!user) return res.status(404).json({ message: 'User not found.' });
-
-    const { name, email, password, phone, birthday, address } = req.body;
-
-    if (email && email !== user.email) {
-      const existingUser = await User.findOne({ email: email.toLowerCase() });
-      if (existingUser && existingUser._id.toString() !== user._id.toString()) {
-        return res.status(400).json({ message: 'That email is already being used by another account.' });
-      }
-      user.email = email.toLowerCase();
-    }
-
-    if (name !== undefined) user.name = name;
-    if (phone !== undefined) user.phone = phone;
-    if (birthday !== undefined) user.birthday = birthday;
-    if (address !== undefined) user.address = address;
-    if (password) user.password = await bcrypt.hash(password, await bcrypt.genSalt(10));
-
-    if (req.file) {
-      if (user.profileImageId) await cloudinary.uploader.destroy(user.profileImageId);
-      user.profileImage = req.file.path;
-      user.profileImageId = req.file.filename;
-    }
-
-    await user.save();
-    res.status(200).json({ message: 'Profile updated successfully.', user: buildUserPayload(user) });
-  } catch (e) {
-    console.error('PROFILE UPDATE ERROR:', e);
-    res.status(500).json({ message: 'Server Error: Could not update profile.' });
-  }
+    res.status(200).json({ message: "User deleted successfully!" });
+  } catch (e) { res.status(500).json({ message: "Server Error: Could not delete user." }); }
 };
 
 const toggleFavorite = async (req, res) => {
@@ -92,7 +42,7 @@ const getFavorites = async (req, res) => {
     const user = await User.findById(req.user._id).populate('favorites');
     res.status(200).json(user.favorites);
   } catch (e) {
-    res.status(500).json({ message: 'Server Error: Could not fetch favorites.' });
+    res.status(500).json({ message: "Server Error: Could not fetch favorites." });
   }
 };
 
@@ -113,13 +63,4 @@ const markAllNotificationsRead = async (req, res) => {
   } catch (e) { res.status(500).json({ message: 'Error updating notifications' }); }
 };
 
-module.exports = {
-  getAllUsers,
-  deleteUser,
-  deactivateUser,
-  updateProfile,
-  toggleFavorite,
-  getFavorites,
-  getMyNotifications,
-  markAllNotificationsRead
-};
+module.exports = { getAllUsers, deleteUser, toggleFavorite, getFavorites, getMyNotifications, markAllNotificationsRead };
