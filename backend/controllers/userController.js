@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const Notification = require('../models/Notification');
 
 const getAllUsers = async (req, res) => {
   try { res.status(200).json(await User.find({}).select('-password')); } 
@@ -44,11 +45,19 @@ const getFavorites = async (req, res) => {
 
 const getMyNotifications = async (req, res) => {
   try {
-    const notifs = await Notification.find({
-      $or: [ { user: req.user._id }, { user: null } ]
-    }).sort({ createdAt: -1 });
+    const notifs = await Notification.find({ $or: [ { user: req.user._id }, { user: null } ] }).sort({ createdAt: -1 });
     res.status(200).json(notifs);
   } catch (e) { res.status(500).json({ message: "Error fetching notifications" }); }
 };
 
-module.exports = { getAllUsers, deleteUser, toggleFavorite, getFavorites, getMyNotifications };
+const markAllNotificationsRead = async (req, res) => {
+  try {
+    await Notification.updateMany(
+      { $or: [{ user: req.user._id }, { user: null }], isRead: false },
+      { $set: { isRead: true } }
+    );
+    res.status(200).json({ message: "All notifications marked as read" });
+  } catch (e) { res.status(500).json({ message: "Error updating notifications" }); }
+};
+
+module.exports = { getAllUsers, deleteUser, toggleFavorite, getFavorites, getMyNotifications, markAllNotificationsRead };

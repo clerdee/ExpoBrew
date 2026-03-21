@@ -1,4 +1,5 @@
 const Order = require('../models/Order');
+const Notification = require('../models/Notification'); 
 
 const createOrder = async (req, res) => {
   try {
@@ -23,8 +24,21 @@ const updateOrderStatus = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id);
     if (!order) return res.status(404).json({ message: "Order not found" });
+    
+    const oldStatus = order.status;
     order.status = req.body.status || order.status;
-    res.status(200).json(await order.save());
+    const updatedOrder = await order.save();
+
+    if (oldStatus !== updatedOrder.status) {
+      await Notification.create({
+        user: order.user,
+        title: "Order Status Updated",
+        message: `Your order #${order._id.toString().slice(-6).toUpperCase()} is now ${updatedOrder.status}.`,
+        isRead: false
+      });
+    }
+
+    res.status(200).json(updatedOrder);
   } catch (e) { res.status(500).json({ message: "Server Error: Could not update order." }); }
 };
 
