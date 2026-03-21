@@ -17,12 +17,37 @@ const getDashboardStats = async (req, res) => {
   } catch (e) { res.status(500).json({ message: "Server Error" }); }
 };
 
+const updateOrderStatus = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id);
+    if (!order) return res.status(404).json({ message: "Order not found" });
+    order.status = req.body.status || order.status;
+    await order.save();
+
+    await Notification.create({
+      user: order.user,
+      title: "Order Update",
+      message: `Your order #${order._id.slice(-6).toUpperCase()} is now ${order.status}!`,
+      type: 'Order'
+    });
+
+    res.status(200).json(order);
+  } catch (e) { res.status(500).json({ message: "Error" }); }
+};
+
 const createPromo = async (req, res) => {
   try {
     const promo = new Promo(req.body);
     await promo.save();
-    res.status(201).json({ message: "Promo created and Notification sent!", promo });
-  } catch (e) { res.status(500).json({ message: "Error creating promo" }); }
+
+    await Notification.create({
+      title: `New Promo: ${promo.title}`,
+      message: `${promo.description}. Use code: ${promo.code}`,
+      type: 'Promo'
+    });
+
+    res.status(201).json(promo);
+  } catch (e) { res.status(500).json({ message: "Error" }); }
 };
 
 const getPromos = async (req, res) => {
@@ -30,4 +55,4 @@ const getPromos = async (req, res) => {
   catch (e) { res.status(500).json({ message: "Error fetching promos" }); }
 };
 
-module.exports = { getDashboardStats, createPromo, getPromos };
+module.exports = { getDashboardStats, updateOrderStatus, createPromo, getPromos };

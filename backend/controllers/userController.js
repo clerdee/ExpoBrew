@@ -42,4 +42,13 @@ const getFavorites = async (req, res) => {
   }
 };
 
-module.exports = { getAllUsers, deleteUser, toggleFavorite, getFavorites };
+const getMyNotifications = async (req, res) => {
+  try {
+    const notifs = await Notification.find({
+      $or: [ { user: req.user._id }, { user: null } ]
+    }).sort({ createdAt: -1 });
+    res.status(200).json(notifs);
+  } catch (e) { res.status(500).json({ message: "Error fetching notifications" }); }
+};
+
+module.exports = { getAllUsers, deleteUser, toggleFavorite, getFavorites, getMyNotifications };
