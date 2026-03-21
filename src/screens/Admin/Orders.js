@@ -14,12 +14,8 @@ export default function AdminOrders({ navigation }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  
-  // Active Filters
   const [statusFilter, setStatusFilter] = useState('All');
   const [dateFilter, setDateFilter] = useState('Today');
-  
-  // Modal Draft Filters
   const [filterVis, setFilterVis] = useState(false);
   const [tempStatus, setTempStatus] = useState('All');
   const [tempDate, setTempDate] = useState('Today');
@@ -28,9 +24,12 @@ export default function AdminOrders({ navigation }) {
     setLoading(true);
     try {
       const t = await SecureStore.getItemAsync('userToken');
-      setOrders((await axios.get(`${API_BASE_URL}/orders`, { headers: { Authorization: `Bearer ${t}` } })).data);
-    } catch (e) { Toast.show({ type: 'error', text1: 'Failed to load orders' }); } 
-    finally { setLoading(false); }
+      const response = await axios.get(`${API_BASE_URL}/orders`, { headers: { Authorization: `Bearer ${t}` } });
+      setOrders(response.data);
+    } catch (e) { 
+      console.error("Fetch Orders Error:", e.response?.data || e.message);
+      Toast.show({ type: 'error', text1: 'Failed to load orders' }); 
+    } finally { setLoading(false); }
   }, []);
 
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
@@ -38,39 +37,39 @@ export default function AdminOrders({ navigation }) {
   const handleAccept = async (id) => {
     try {
       const t = await SecureStore.getItemAsync('userToken');
-      await axios.put(`${API_BASE_URL}/orders/${id}/status`, { status: 'Preparing' }, { headers: { Authorization: `Bearer ${t}` } });
+      // NOTE: Ensure your backend has the route PUT /api/orders/:id/status
+      // If it fails, check if the route is actually just PUT /api/orders/:id
+      await axios.put(`${API_BASE_URL}/orders/${id}/status`, 
+        { status: 'Preparing' }, 
+        { headers: { Authorization: `Bearer ${t}` } }
+      );
       Toast.show({ type: 'success', text1: 'Order Accepted', text2: 'Moved to Preparing' });
       fetchOrders();
-    } catch (e) { Toast.show({ type: 'error', text1: 'Failed to update order' }); }
+    } catch (e) { 
+      console.error("Update Order Error:", e.response?.data || e.message);
+      Toast.show({ 
+        type: 'error', 
+        text1: 'Failed to update order', 
+        text2: e.response?.data?.message || 'Check console for details' 
+      }); 
+    }
   };
 
-  const openFilters = () => {
-    setTempStatus(statusFilter);
-    setTempDate(dateFilter);
-    setFilterVis(true);
-  };
-
-  const applyFilters = () => {
-    setStatusFilter(tempStatus);
-    setDateFilter(tempDate);
-    setFilterVis(false);
-  };
+  const openFilters = () => { setTempStatus(statusFilter); setTempDate(dateFilter); setFilterVis(true); };
+  const applyFilters = () => { setStatusFilter(tempStatus); setDateFilter(tempDate); setFilterVis(false); };
 
   const filtered = useMemo(() => orders.filter(o => {
     const matchSearch = o._id.toLowerCase().includes(search.toLowerCase()) || o.user?.name?.toLowerCase().includes(search.toLowerCase());
     const matchStatus = statusFilter === 'All' || o.status === statusFilter;
     let matchDate = true;
     const oDate = new Date(o.createdAt), now = new Date();
-    
     if (dateFilter === 'Today') matchDate = oDate.toDateString() === now.toDateString();
     if (dateFilter === 'This Hour') matchDate = (now - oDate) / (1000 * 60 * 60) <= 1; 
-    
     return matchSearch && matchStatus && matchDate;
   }), [orders, search, statusFilter, dateFilter]);
 
   const renderItem = ({ item: o }) => {
     const sCfg = { Pending: { c: '#F1C40F' }, Preparing: { c: '#E67E22' }, Ready: { c: '#3498DB' }, Completed: { c: '#27AE60' }, Cancelled: { c: '#E74C3C' } }[o.status] || { c: '#888' };
-    
     return (
       <TouchableOpacity activeOpacity={0.8} onPress={() => navigation.navigate('OrderDetail', { order: o, refresh: fetchOrders })}>
         <Card style={styles.card} mode="elevated">
@@ -84,20 +83,16 @@ export default function AdminOrders({ navigation }) {
                 <Text style={[styles.statusTxt, { color: sCfg.c }]}>{o.status.toUpperCase()}</Text>
               </View>
             </View>
-            
             <Divider style={styles.div} />
-            
             <View style={styles.rowMid}>
               <View>
                 <Text style={styles.cust}><MaterialCommunityIcons name="account" size={14}/> {o.user?.name || 'Guest'}</Text>
-                <Text style={styles.items}>{o.orderItems.length} items</Text>
+                <Text style={styles.items}>{o.orderItems?.length || 0} items</Text>
               </View>
-              <Text style={styles.total}>₱{o.totalPrice.toFixed(2)}</Text>
+              <Text style={styles.total}>₱{o.totalPrice?.toFixed(2)}</Text>
             </View>
-
             {o.status === 'Pending' && (
               <View style={styles.actionRow}>
-                {/* Noticeably Green Accept Button */}
                 <Button mode="contained" buttonColor="#27AE60" labelStyle={{fontSize: 13, fontWeight: 'bold'}} style={styles.acceptBtn} onPress={() => handleAccept(o._id)}>
                   ACCEPT ORDER
                 </Button>
@@ -114,18 +109,16 @@ export default function AdminOrders({ navigation }) {
       <View style={styles.top}>
         <View style={styles.header}>
           <View style={styles.headerRow}>
-            <IconButton icon="menu" size={28} iconColor="#FFF" onPress={() => navigation.toggleDrawer && navigation.toggleDrawer()} style={{ marginLeft: -10 }} />
+            <IconButton icon="menu" size={28} iconColor="#FFF" onPress={() => navigation.toggleDrawer?.()} style={{ marginLeft: -10 }} />
             <Text style={styles.title}>Orders</Text>
             <IconButton icon="refresh" size={28} iconColor="#FFF" onPress={fetchOrders} style={{ marginRight: -10 }} />
           </View>
         </View>
-        
         <View style={styles.searchRow}>
           <Searchbar placeholder="Search ID or Customer..." onChangeText={setSearch} value={search} style={styles.searchBar} inputStyle={{ fontSize: 15 }} iconColor="#4A2E1B" elevation={2} />
           <IconButton icon="tune-variant" size={26} iconColor="#4A2E1B" containerColor="#FFF" style={styles.filterBtn} onPress={openFilters} />
         </View>
       </View>
-
       <View style={styles.bottom}>
         {loading ? <ActivityIndicator size="large" color="#4A2E1B" style={styles.loader} /> : (
           <FlatList data={filtered} keyExtractor={i => i._id.toString()} renderItem={renderItem} contentContainerStyle={styles.list} showsVerticalScrollIndicator={false} ListEmptyComponent={
@@ -133,28 +126,19 @@ export default function AdminOrders({ navigation }) {
           } />
         )}
       </View>
-
       <Modal animationType="slide" transparent visible={filterVis} onRequestClose={() => setFilterVis(false)}>
         <View style={styles.overlay}>
           <View style={styles.sheet}>
-            <View style={styles.mHead}>
-              <Text style={styles.mTitle}>Filter Orders</Text>
-              <IconButton icon="close" onPress={() => setFilterVis(false)} />
-            </View>
-            
+            <View style={styles.mHead}><Text style={styles.mTitle}>Filter Orders</Text><IconButton icon="close" onPress={() => setFilterVis(false)} /></View>
             <Text style={styles.filterTitle}>Order Status</Text>
             <View style={styles.wrapContainer}>
               {STATUSES.map(f => <Chip key={f} mode="flat" onPress={()=>setTempStatus(f)} style={[styles.chip, tempStatus===f?styles.chipOn:styles.chipOff]} textStyle={tempStatus===f?styles.textOn:styles.textOff}>{f}</Chip>)}
             </View>
-            
             <Text style={styles.filterTitle}>Time Range</Text>
             <View style={styles.wrapContainer}>
               {DATES.map(f => <Chip key={f} mode="flat" onPress={()=>setTempDate(f)} style={[styles.chip, tempDate===f?styles.chipOn:styles.chipOff]} textStyle={tempDate===f?styles.textOn:styles.textOff}>{f}</Chip>)}
             </View>
-
-            <Button mode="contained" buttonColor="#4A2E1B" style={{ marginTop: 15, borderRadius: 10 }} contentStyle={{ height: 50 }} onPress={applyFilters}>
-              Show Results
-            </Button>
+            <Button mode="contained" buttonColor="#4A2E1B" style={{ marginTop: 15, borderRadius: 10 }} contentStyle={{ height: 50 }} onPress={applyFilters}>Show Results</Button>
           </View>
         </View>
       </Modal>

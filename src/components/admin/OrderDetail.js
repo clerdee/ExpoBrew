@@ -11,17 +11,32 @@ const STATUSES = ['Pending', 'Preparing', 'Ready', 'Completed', 'Cancelled'];
 
 export default function OrderDetail({ route, navigation }) {
   const { order: initialOrder, refresh } = route.params;
-  const [order, setOrder] = useState(initialOrder), [modalVis, setModalVis] = useState(false), [btnLoading, setBtnLoading] = useState(false);
+  const [order, setOrder] = useState(initialOrder);
+  const [modalVis, setModalVis] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const updateStatus = async (status) => {
+  const updateStatus = async (newStatus) => {
+    setLoading(true);
     try {
-      setModalVis(false); setBtnLoading(true);
       const t = await SecureStore.getItemAsync('userToken');
-      await axios.put(`${API_BASE_URL}/orders/${order._id}/status`, { status }, { headers: { Authorization: `Bearer ${t}` } });
-      setOrder({ ...order, status });
-      if(refresh) refresh();
-      Toast.show({ type: 'success', text1: 'Status Updated', text2: `Order is now ${status}` });
-    } catch (e) { Toast.show({ type: 'error', text1: 'Update Failed' }); } finally { setBtnLoading(false); }
+      
+      const response = await axios.put(
+        `${API_BASE_URL}/orders/${order._id}/status`, 
+        { status: newStatus }, 
+        { headers: { Authorization: `Bearer ${t}` } }
+      );
+      
+      if (response.status === 200) {
+        setOrder({ ...order, status: newStatus });
+        if(refresh) refresh();
+        setModalVis(false);
+        Toast.show({ type: 'success', text1: 'Status Updated', text2: `Order is now ${newStatus}` });
+      }
+    } catch (e) { 
+      Toast.show({ type: 'error', text1: 'Update Failed' }); 
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDelete = () => {
@@ -32,14 +47,21 @@ export default function OrderDetail({ route, navigation }) {
             const t = await SecureStore.getItemAsync('userToken');
             await axios.delete(`${API_BASE_URL}/orders/${order._id}`, { headers: { Authorization: `Bearer ${t}` } });
             Toast.show({ type: 'success', text1: 'Order Deleted' });
-            if(refresh) refresh(); navigation.navigate('Orders');
+            if(refresh) refresh();
+            navigation.navigate('Orders');
           } catch (e) { Toast.show({ type: 'error', text1: 'Delete Failed' }); }
         }
       }
     ]);
   };
 
-  const sCfg = { Pending: { c: '#F1C40F', i: 'clock-outline' }, Preparing: { c: '#E67E22', i: 'coffee-maker' }, Ready: { c: '#3498DB', i: 'bell-ring' }, Completed: { c: '#27AE60', i: 'check-circle' }, Cancelled: { c: '#E74C3C', i: 'cancel' } }[order.status] || { c: '#888', i: 'help-circle' };
+  const sCfg = { 
+    Pending: { c: '#F1C40F', i: 'clock-outline' }, 
+    Preparing: { c: '#E67E22', i: 'coffee-maker' }, 
+    Ready: { c: '#3498DB', i: 'bell-ring' }, 
+    Completed: { c: '#27AE60', i: 'check-circle' }, 
+    Cancelled: { c: '#E74C3C', i: 'cancel' } 
+  }[order.status] || { c: '#888', i: 'help-circle' };
 
   return (
     <View style={styles.bg}>
@@ -49,9 +71,17 @@ export default function OrderDetail({ route, navigation }) {
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        {/* ACTION BUTTON: ACCEPT ORDER */}
         {order.status === 'Pending' && (
-          <Button mode="contained" buttonColor="#27AE60" style={styles.mainAction} icon="check-bold" loading={btnLoading} onPress={() => updateStatus('Preparing')}>
-            ACCEPT & START PREPARING
+          <Button 
+            mode="contained" 
+            buttonColor="#27AE60" 
+            style={styles.mainAction} 
+            loading={loading}
+            icon="check-bold" 
+            onPress={() => updateStatus('Preparing')}
+          >
+            ACCEPT ORDER
           </Button>
         )}
 
@@ -60,8 +90,9 @@ export default function OrderDetail({ route, navigation }) {
             <View><Text style={styles.lbl}>Order ID</Text><Text style={styles.val}>#{order._id}</Text></View>
             <View style={{alignItems: 'flex-end'}}><Text style={styles.lbl}>Date</Text><Text style={[styles.val, {fontSize: 13}]}>{new Date(order.createdAt).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'})}</Text></View>
           </View>
+          
           <TouchableOpacity activeOpacity={0.8} onPress={()=>setModalVis(true)} style={[styles.statusBtn, { backgroundColor: sCfg.c }]}>
-            <View style={styles.rowTop}><MaterialCommunityIcons name={sCfg.i} size={20} color="#FFF" style={{marginRight: 8}}/><Text style={styles.statusTxt}>{order.status.toUpperCase()}</Text></View>
+            <View style={styles.rowTop}><MaterialCommunityIcons name={sCfg.i} size={20} color="#FFF" style={{marginRight: 8}}/><Text style={styles.statusTxt}>STATUS: {order.status.toUpperCase()}</Text></View>
             <View style={styles.rowTop}><Text style={styles.tapTxt}>CHANGE</Text><MaterialCommunityIcons name="chevron-down" size={20} color="#FFF"/></View>
           </TouchableOpacity>
         </Card.Content></Card>
@@ -72,7 +103,7 @@ export default function OrderDetail({ route, navigation }) {
           <View style={[styles.row, {marginTop:8}]}><MaterialCommunityIcons name="email" size={18} color="#888"/><Text style={styles.valTxt}>{order.user?.email || 'N/A'}</Text></View>
         </Card.Content></Card>
 
-        <Text style={[styles.secTitle, {marginLeft: 5}]}>Order Items</Text>
+        <Text style={[styles.secTitle, {marginLeft: 5}]}>Items</Text>
         {order.orderItems.map((item, idx) => (
           <Card key={idx} style={styles.itemCard}><Card.Content>
             <View style={styles.rowTop}>
@@ -80,26 +111,18 @@ export default function OrderDetail({ route, navigation }) {
               <View style={{flex:1, paddingHorizontal: 12}}><Text style={styles.iName}>{item.name}</Text></View>
               <Text style={styles.iPrice}>₱{(item.price * item.qty).toFixed(2)}</Text>
             </View>
-            {item.customizations && (
-              <View style={styles.custBox}>
-                <Text style={styles.cHead}>CUSTOMIZATIONS</Text>
-                {Object.entries(item.customizations).map(([k, v]) => v && <View key={k} style={styles.cRow}><Text style={styles.cLbl}>{k}:</Text><Text style={styles.cVal}>{Array.isArray(v) ? v.map(x=>x.l||x).join(', ') : v}</Text></View>)}
-              </View>
-            )}
           </Card.Content></Card>
         ))}
 
         <Card style={styles.card}><Card.Content>
-          <View style={styles.row}><Text style={styles.lbl}>Subtotal</Text><Text style={styles.val}>₱{(order.totalPrice / 1.12).toFixed(2)}</Text></View>
-          <View style={[styles.row, {marginVertical:8}]}><Text style={styles.lbl}>VAT (12%)</Text><Text style={styles.val}>₱{(order.totalPrice - (order.totalPrice / 1.12)).toFixed(2)}</Text></View>
-          <Divider style={styles.div}/><View style={styles.row}><Text style={styles.totLbl}>Total Amount</Text><Text style={styles.totVal}>₱{order.totalPrice.toFixed(2)}</Text></View>
+          <View style={styles.row}><Text style={styles.lbl}>Total Amount</Text><Text style={styles.totVal}>₱{order.totalPrice.toFixed(2)}</Text></View>
         </Card.Content></Card>
 
         <Button mode="outlined" textColor="#D32F2F" style={styles.deleteBtn} icon="trash-can-outline" onPress={handleDelete}>DELETE ORDER</Button>
       </ScrollView>
 
       <Modal animationType="fade" transparent visible={modalVis}><View style={styles.overlay}><View style={styles.sheet}>
-        <View style={styles.mHead}><Text style={styles.mTitle}>Update Status</Text><IconButton icon="close" onPress={()=>setModalVis(false)}/></View>
+        <View style={styles.mHead}><Text style={styles.mTitle}>Manual Update</Text><IconButton icon="close" onPress={()=>setModalVis(false)}/></View>
         {STATUSES.map(s => (<TouchableOpacity key={s} style={[styles.sBtn, order.status===s && styles.sBtnOn]} onPress={()=>updateStatus(s)}><Text style={[styles.sBtnTxt, order.status===s && styles.sBtnTxtOn]}>{s}</Text>{order.status===s && <MaterialCommunityIcons name="check" size={20} color="#6F4E37" />}</TouchableOpacity>))}
       </View></View></Modal>
     </View>
@@ -115,17 +138,11 @@ const styles = StyleSheet.create({
   lbl: { color: '#888', fontSize: 12, textTransform: 'uppercase' }, val: { fontWeight: 'bold', color: '#333', fontSize: 16 },
   statusBtn: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14, borderRadius: 10, marginTop: 15 },
   statusTxt: { color: '#FFF', fontWeight: '900', fontSize: 15 }, tapTxt: { color: 'rgba(255,255,255,0.8)', fontSize: 10, fontWeight: 'bold', marginRight: 4 },
-  secTitle: { fontSize: 16, fontWeight: 'bold', color: '#4A3B32', marginBottom: 10, marginTop: 5 }, valTxt: { marginLeft: 10, color: '#444', fontWeight: '500' },
-  div: { marginVertical: 12, backgroundColor: '#F0F0F0' },
+  secTitle: { fontSize: 16, fontWeight: 'bold', color: '#4A3B32', marginBottom: 10 }, valTxt: { marginLeft: 10, color: '#444', fontWeight: '500' },
   itemCard: { backgroundColor: '#FFF', marginBottom: 12, borderRadius: 12 },
   qtyBox: { backgroundColor: '#EBE1D7', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 }, qty: { fontWeight: 'bold', color: '#6F4E37' },
   iName: { fontWeight: 'bold', fontSize: 16, color: '#333' }, iPrice: { fontWeight: 'bold', color: '#6F4E37', fontSize: 16 },
-  custBox: { marginTop: 12, padding: 12, backgroundColor: '#FDFCFB', borderRadius: 8, borderWidth: 1, borderColor: '#EBE1D7' },
-  cHead: { fontSize: 11, fontWeight: 'bold', color: '#A0938A', marginBottom: 8 },
-  cRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
-  cLbl: { fontSize: 13, color: '#777', textTransform: 'capitalize' }, cVal: { fontSize: 13, color: '#333', fontWeight: '700' },
-  totLbl: { fontSize: 16, fontWeight: 'bold', color: '#333' }, totVal: { fontSize: 20, fontWeight: '900', color: '#6F4E37' },
-  deleteBtn: { marginTop: 10, borderColor: '#D32F2F', borderRadius: 10 },
+  totVal: { fontSize: 20, fontWeight: '900', color: '#6F4E37' }, deleteBtn: { marginTop: 10, borderColor: '#D32F2F', borderRadius: 10 },
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 }, sheet: { backgroundColor: '#FFF', borderRadius: 20, padding: 20 },
   mHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }, mTitle: { fontSize: 18, fontWeight: 'bold', color: '#4A3B32' },
   sBtn: { flexDirection: 'row', justifyContent: 'space-between', padding: 15, borderRadius: 12, marginBottom: 8, backgroundColor: '#F9F9F9' }, sBtnOn: { backgroundColor: '#EBE1D7', borderWidth: 1, borderColor: '#6F4E37' },
