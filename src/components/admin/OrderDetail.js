@@ -11,30 +11,28 @@ const STATUSES = ['Pending', 'Preparing', 'Ready', 'Completed', 'Cancelled'];
 
 export default function OrderDetail({ route, navigation }) {
   const { order: initialOrder, refresh } = route.params;
-  const [order, setOrder] = useState(initialOrder);
-  const [modalVis, setModalVis] = useState(false);
+  const [order, setOrder] = useState(initialOrder), [modalVis, setModalVis] = useState(false), [btnLoading, setBtnLoading] = useState(false);
 
   const updateStatus = async (status) => {
     try {
-      setModalVis(false);
+      setModalVis(false); setBtnLoading(true);
       const t = await SecureStore.getItemAsync('userToken');
       await axios.put(`${API_BASE_URL}/orders/${order._id}/status`, { status }, { headers: { Authorization: `Bearer ${t}` } });
       setOrder({ ...order, status });
       if(refresh) refresh();
-      Toast.show({ type: 'success', text1: 'Status Updated' });
-    } catch (e) { Toast.show({ type: 'error', text1: 'Update Failed' }); }
+      Toast.show({ type: 'success', text1: 'Status Updated', text2: `Order is now ${status}` });
+    } catch (e) { Toast.show({ type: 'error', text1: 'Update Failed' }); } finally { setBtnLoading(false); }
   };
 
   const handleDelete = () => {
-    Alert.alert("Delete Order", "Are you sure you want to permanently delete this order? This cannot be undone.", [
+    Alert.alert("Delete Order", "Permanently delete this order?", [
       { text: "Cancel", style: "cancel" },
       { text: "Delete", style: "destructive", onPress: async () => {
           try {
             const t = await SecureStore.getItemAsync('userToken');
             await axios.delete(`${API_BASE_URL}/orders/${order._id}`, { headers: { Authorization: `Bearer ${t}` } });
             Toast.show({ type: 'success', text1: 'Order Deleted' });
-            if(refresh) refresh();
-            navigation.navigate('Orders');
+            if(refresh) refresh(); navigation.navigate('Orders');
           } catch (e) { Toast.show({ type: 'error', text1: 'Delete Failed' }); }
         }
       }
@@ -51,15 +49,20 @@ export default function OrderDetail({ route, navigation }) {
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        {order.status === 'Pending' && (
+          <Button mode="contained" buttonColor="#27AE60" style={styles.mainAction} icon="check-bold" loading={btnLoading} onPress={() => updateStatus('Preparing')}>
+            ACCEPT & START PREPARING
+          </Button>
+        )}
+
         <Card style={styles.card}><Card.Content>
           <View style={styles.row}>
             <View><Text style={styles.lbl}>Order ID</Text><Text style={styles.val}>#{order._id}</Text></View>
-            <View style={{alignItems: 'flex-end'}}><Text style={styles.lbl}>Date & Time</Text><Text style={[styles.val, {fontSize: 13}]}>{new Date(order.createdAt).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'})}</Text></View>
+            <View style={{alignItems: 'flex-end'}}><Text style={styles.lbl}>Date</Text><Text style={[styles.val, {fontSize: 13}]}>{new Date(order.createdAt).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'})}</Text></View>
           </View>
-          
           <TouchableOpacity activeOpacity={0.8} onPress={()=>setModalVis(true)} style={[styles.statusBtn, { backgroundColor: sCfg.c }]}>
-            <View style={styles.rowTop}><MaterialCommunityIcons name={sCfg.i} size={20} color="#FFF" style={{marginRight: 8}}/><Text style={styles.statusTxt}>STATUS: {order.status.toUpperCase()}</Text></View>
-            <View style={styles.rowTop}><Text style={styles.tapTxt}>TAP TO CHANGE</Text><MaterialCommunityIcons name="chevron-down" size={20} color="#FFF"/></View>
+            <View style={styles.rowTop}><MaterialCommunityIcons name={sCfg.i} size={20} color="#FFF" style={{marginRight: 8}}/><Text style={styles.statusTxt}>{order.status.toUpperCase()}</Text></View>
+            <View style={styles.rowTop}><Text style={styles.tapTxt}>CHANGE</Text><MaterialCommunityIcons name="chevron-down" size={20} color="#FFF"/></View>
           </TouchableOpacity>
         </Card.Content></Card>
 
@@ -69,7 +72,7 @@ export default function OrderDetail({ route, navigation }) {
           <View style={[styles.row, {marginTop:8}]}><MaterialCommunityIcons name="email" size={18} color="#888"/><Text style={styles.valTxt}>{order.user?.email || 'N/A'}</Text></View>
         </Card.Content></Card>
 
-        <Text style={[styles.secTitle, {marginLeft: 5, marginBottom: 10}]}>Order Items</Text>
+        <Text style={[styles.secTitle, {marginLeft: 5}]}>Order Items</Text>
         {order.orderItems.map((item, idx) => (
           <Card key={idx} style={styles.itemCard}><Card.Content>
             <View style={styles.rowTop}>
@@ -77,35 +80,25 @@ export default function OrderDetail({ route, navigation }) {
               <View style={{flex:1, paddingHorizontal: 12}}><Text style={styles.iName}>{item.name}</Text></View>
               <Text style={styles.iPrice}>₱{(item.price * item.qty).toFixed(2)}</Text>
             </View>
-
             {item.customizations && (
               <View style={styles.custBox}>
-                <Text style={styles.cHead}><MaterialCommunityIcons name="tune" size={12}/> CUSTOMIZATIONS</Text>
-                <View style={styles.cRow}><Text style={styles.cLbl}>Size:</Text><Text style={styles.cVal}>{item.customizations.size}</Text></View>
-                <View style={styles.cRow}><Text style={styles.cLbl}>Milk:</Text><Text style={styles.cVal}>{item.customizations.milk}</Text></View>
-                <View style={styles.cRow}><Text style={styles.cLbl}>Espresso:</Text><Text style={styles.cVal}>{item.customizations.espresso}</Text></View>
-                {item.customizations.syrups?.length > 0 && <View style={styles.cRow}><Text style={styles.cLbl}>Syrups:</Text><Text style={styles.cVal}>{item.customizations.syrups.map(s=>s.l).join(', ')}</Text></View>}
-                {item.customizations.extras?.length > 0 && <View style={styles.cRow}><Text style={styles.cLbl}>Extras:</Text><Text style={styles.cVal}>{item.customizations.extras.map(e=>e.l).join(', ')}</Text></View>}
-                {item.customizations.condiments?.length > 0 && <View style={styles.cRow}><Text style={styles.cLbl}>Condiments:</Text><Text style={styles.cVal}>{item.customizations.condiments.join(', ')}</Text></View>}
+                <Text style={styles.cHead}>CUSTOMIZATIONS</Text>
+                {Object.entries(item.customizations).map(([k, v]) => v && <View key={k} style={styles.cRow}><Text style={styles.cLbl}>{k}:</Text><Text style={styles.cVal}>{Array.isArray(v) ? v.map(x=>x.l||x).join(', ') : v}</Text></View>)}
               </View>
             )}
           </Card.Content></Card>
         ))}
 
-        <Card style={[styles.card, {marginTop: 10}]}><Card.Content>
+        <Card style={styles.card}><Card.Content>
           <View style={styles.row}><Text style={styles.lbl}>Subtotal</Text><Text style={styles.val}>₱{(order.totalPrice / 1.12).toFixed(2)}</Text></View>
           <View style={[styles.row, {marginVertical:8}]}><Text style={styles.lbl}>VAT (12%)</Text><Text style={styles.val}>₱{(order.totalPrice - (order.totalPrice / 1.12)).toFixed(2)}</Text></View>
-          <Divider style={styles.div}/>
-          <View style={styles.row}><Text style={styles.totLbl}>Total Amount</Text><Text style={styles.totVal}>₱{order.totalPrice.toFixed(2)}</Text></View>
+          <Divider style={styles.div}/><View style={styles.row}><Text style={styles.totLbl}>Total Amount</Text><Text style={styles.totVal}>₱{order.totalPrice.toFixed(2)}</Text></View>
         </Card.Content></Card>
 
-        {/* Delete Order Button */}
-        <Button mode="outlined" textColor="#D32F2F" style={styles.deleteBtn} icon="trash-can-outline" onPress={handleDelete}>
-          DELETE ORDER
-        </Button>
+        <Button mode="outlined" textColor="#D32F2F" style={styles.deleteBtn} icon="trash-can-outline" onPress={handleDelete}>DELETE ORDER</Button>
       </ScrollView>
 
-      <Modal animationType="fade" transparent visible={modalVis} onRequestClose={() => setModalVis(false)}><View style={styles.overlay}><View style={styles.sheet}>
+      <Modal animationType="fade" transparent visible={modalVis}><View style={styles.overlay}><View style={styles.sheet}>
         <View style={styles.mHead}><Text style={styles.mTitle}>Update Status</Text><IconButton icon="close" onPress={()=>setModalVis(false)}/></View>
         {STATUSES.map(s => (<TouchableOpacity key={s} style={[styles.sBtn, order.status===s && styles.sBtnOn]} onPress={()=>updateStatus(s)}><Text style={[styles.sBtnTxt, order.status===s && styles.sBtnTxtOn]}>{s}</Text>{order.status===s && <MaterialCommunityIcons name="check" size={20} color="#6F4E37" />}</TouchableOpacity>))}
       </View></View></Modal>
@@ -116,21 +109,21 @@ export default function OrderDetail({ route, navigation }) {
 const styles = StyleSheet.create({
   bg: { flex: 1, backgroundColor: '#FAF5F0', paddingTop: 50 },
   head: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, marginBottom: 10 }, hTxt: { fontSize: 22, fontWeight: 'bold', color: '#4A3B32' },
-  scroll: { paddingHorizontal: 20, paddingBottom: 40 },
+  scroll: { paddingHorizontal: 20, paddingBottom: 40 }, mainAction: { marginBottom: 15, borderRadius: 12, paddingVertical: 5 },
   card: { backgroundColor: '#FFF', marginBottom: 15, borderRadius: 12, elevation: 2 },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, rowTop: { flexDirection: 'row', alignItems: 'center' },
-  lbl: { color: '#888', fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5 }, val: { fontWeight: 'bold', color: '#333', fontSize: 16, marginTop: 2 },
-  statusBtn: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14, borderRadius: 10, marginTop: 15, elevation: 3 },
-  statusTxt: { color: '#FFF', fontWeight: '900', fontSize: 15, letterSpacing: 1 }, tapTxt: { color: 'rgba(255,255,255,0.8)', fontSize: 10, fontWeight: 'bold', marginRight: 4 },
-  secTitle: { fontSize: 16, fontWeight: 'bold', color: '#4A3B32', marginBottom: 10 }, valTxt: { marginLeft: 10, color: '#444', fontWeight: '500', fontSize: 15 },
+  lbl: { color: '#888', fontSize: 12, textTransform: 'uppercase' }, val: { fontWeight: 'bold', color: '#333', fontSize: 16 },
+  statusBtn: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14, borderRadius: 10, marginTop: 15 },
+  statusTxt: { color: '#FFF', fontWeight: '900', fontSize: 15 }, tapTxt: { color: 'rgba(255,255,255,0.8)', fontSize: 10, fontWeight: 'bold', marginRight: 4 },
+  secTitle: { fontSize: 16, fontWeight: 'bold', color: '#4A3B32', marginBottom: 10, marginTop: 5 }, valTxt: { marginLeft: 10, color: '#444', fontWeight: '500' },
   div: { marginVertical: 12, backgroundColor: '#F0F0F0' },
-  itemCard: { backgroundColor: '#FFF', marginBottom: 12, borderRadius: 12, elevation: 1 },
+  itemCard: { backgroundColor: '#FFF', marginBottom: 12, borderRadius: 12 },
   qtyBox: { backgroundColor: '#EBE1D7', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 }, qty: { fontWeight: 'bold', color: '#6F4E37' },
   iName: { fontWeight: 'bold', fontSize: 16, color: '#333' }, iPrice: { fontWeight: 'bold', color: '#6F4E37', fontSize: 16 },
   custBox: { marginTop: 12, padding: 12, backgroundColor: '#FDFCFB', borderRadius: 8, borderWidth: 1, borderColor: '#EBE1D7' },
-  cHead: { fontSize: 11, fontWeight: 'bold', color: '#A0938A', letterSpacing: 1, marginBottom: 8 },
+  cHead: { fontSize: 11, fontWeight: 'bold', color: '#A0938A', marginBottom: 8 },
   cRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
-  cLbl: { fontSize: 13, color: '#777' }, cVal: { fontSize: 13, color: '#333', fontWeight: '700', textAlign: 'right', flex: 1, marginLeft: 15 },
+  cLbl: { fontSize: 13, color: '#777', textTransform: 'capitalize' }, cVal: { fontSize: 13, color: '#333', fontWeight: '700' },
   totLbl: { fontSize: 16, fontWeight: 'bold', color: '#333' }, totVal: { fontSize: 20, fontWeight: '900', color: '#6F4E37' },
   deleteBtn: { marginTop: 10, borderColor: '#D32F2F', borderRadius: 10 },
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 }, sheet: { backgroundColor: '#FFF', borderRadius: 20, padding: 20 },
