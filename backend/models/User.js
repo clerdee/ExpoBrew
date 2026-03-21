@@ -12,7 +12,8 @@ const userSchema = new mongoose.Schema({
   },
 
   profileImage: { type: String, default: null },
-  profileImageId: { type: String, default: null }
+  profileImageId: { type: String, default: null },
+  favorites: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }]
 }, { timestamps: true }); 
 
 module.exports = mongoose.model('User', userSchema);
