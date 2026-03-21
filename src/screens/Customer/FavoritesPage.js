@@ -1,158 +1,152 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, FlatList, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
-import { Text, Card, IconButton, Searchbar, Button } from 'react-native-paper';
+import React, { useState, useCallback, useEffect } from 'react';
+import { View, StyleSheet, FlatList, Image, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { Text, Card, IconButton, Searchbar, Button, Badge, Surface } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import axios from 'axios';
-import { API_BASE_URL } from '../../configs/config';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from "expo-secure-store";
+import * as SQLite from 'expo-sqlite';
 import { useFocusEffect } from '@react-navigation/native';
+import Toast from 'react-native-toast-message'; 
+import { API_BASE_URL } from '../../configs/config';
+
+import CartModal from "../../components/CartModal";
+import CustomizeDrinkModal from "../../components/CustomizeDrinkModal";
 
 const FavoritesPage = ({ navigation }) => {
-  const [favorites, setFavorites] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [favorites, setFavorites] = useState([]), [loading, setLoading] = useState(true), [search, setSearch] = useState('');
+  const [cartVis, setCartVis] = useState(false), [custVis, setCustVis] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null), [cartItems, setCartItems] = useState([]);
 
-  const fetchFavorites = async () => {
+  const loadFavoritesAndCart = async () => {
     try {
       setLoading(true);
-      const token = await AsyncStorage.getItem('userToken');
-      const response = await axios.get(`${API_BASE_URL}/api/users/favorites`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setFavorites(response.data);
-    } catch (error) {
-      console.error("Error fetching favorites:", error);
-    } finally {
-      setLoading(false);
-    }
+      const token = await SecureStore.getItemAsync("userToken");
+      const db = await SQLite.openDatabaseAsync('coffeecart.db');
+      const saved = await db.getFirstAsync('SELECT cart_data FROM cart_table WHERE id = 1;');
+      if (saved?.cart_data) setCartItems(JSON.parse(saved.cart_data));
+
+      if (token) {
+        const res = await axios.get(`${API_BASE_URL}/users/favorites`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setFavorites(res.data);
+      }
+    } catch (e) { 
+      Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to load favorites.' });
+    } finally { setLoading(false); }
   };
 
-  useFocusEffect(
-    useCallback(() => {
-      fetchFavorites();
-    }, [])
-  );
+  useFocusEffect(useCallback(() => { loadFavoritesAndCart(); }, []));
 
-  const removeFavorite = async (productId) => {
+  useEffect(() => {
+    (async () => {
+      if (!loading) {
+        const db = await SQLite.openDatabaseAsync('coffeecart.db');
+        await db.runAsync('INSERT OR REPLACE INTO cart_table (id, cart_data) VALUES (1, ?);', JSON.stringify(cartItems));
+      }
+    })();
+  }, [cartItems]);
+
+  const removeFav = async (item) => {
     try {
-      const token = await AsyncStorage.getItem('userToken');
-      await axios.post(`${API_BASE_URL}/api/users/favorites/${productId}`, {}, {
+      const token = await SecureStore.getItemAsync("userToken");
+      await axios.post(`${API_BASE_URL}/users/favorites/${item._id}`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setFavorites(prev => prev.filter(item => item._id !== productId));
-    } catch (error) {
-      console.error("Error removing favorite:", error);
+      setFavorites(prev => prev.filter(i => i._id !== item._id));
+      Toast.show({ type: 'info', text1: 'Removed', text2: `${item.name} removed from favorites.` });
+    } catch (e) { 
+      Toast.show({ type: 'error', text1: 'Update Failed', text2: 'Could not remove item.' });
     }
   };
 
-  const filteredFavorites = favorites.filter(item =>
-    item.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const onAddClick = (item) => { setSelectedItem(item); setCustVis(true); };
 
-  const renderFavItem = ({ item }) => (
-    <Card style={styles.favCard} mode="elevated">
-      <View style={styles.cardRow}>
-        <Image 
-          source={{ uri: item.image || 'https://via.placeholder.com/150' }} 
-          style={styles.productImage} 
-        />
-        <View style={styles.cardInfo}>
-          <Text variant="titleMedium" style={styles.productName}>{item.name}</Text>
-          <Text variant="bodySmall" style={styles.customizationText}>{item.category}</Text>
-          <Text variant="titleMedium" style={styles.price}>${item.price.toFixed(2)}</Text>
+  const onConfirmCust = (cust) => {
+    setCartItems(prev => [...prev, { ...cust, qty: 1, cartId: Date.now().toString() }]);
+    setCustVis(false); setCartVis(true);
+    Toast.show({ type: 'success', text1: 'Added to Cart', text2: `${cust.name} is ready for checkout!` });
+  };
+
+  const renderItem = ({ item }) => (
+    <Surface style={styles.cardSurface} elevation={1}>
+      <View style={styles.cardInternal}>
+        <Image source={{ uri: item.imageUrl || item.image }} style={styles.prodImg} />
+        <View style={styles.prodDetails}>
+          <Text style={styles.prodCat}>{item.category}</Text>
+          <Text variant="titleMedium" style={styles.prodName} numberOfLines={1}>{item.name}</Text>
+          <Text style={styles.prodPrice}>₱{Number(item.price).toFixed(2)}</Text>
         </View>
-        <View style={styles.actionColumn}>
-          <IconButton 
-            icon="heart" 
-            iconColor="#E74C3C" 
-            size={22} 
-            onPress={() => removeFavorite(item._id)}
-            style={styles.heartBtn}
-          />
-          <TouchableOpacity 
-            style={styles.addToCartBtn} 
-            onPress={() => console.log('Added to cart', item.name)}
-          >
-            <MaterialCommunityIcons name="basket-plus" size={20} color="#fff" />
+        <View style={styles.sideActions}>
+          <IconButton icon="heart" iconColor="#FF5252" size={20} onPress={() => removeFav(item)} style={styles.miniBtn} />
+          <TouchableOpacity style={styles.addCartBtn} onPress={() => onAddClick(item)}>
+            <MaterialCommunityIcons name="plus" size={20} color="#fff" />
           </TouchableOpacity>
         </View>
       </View>
-    </Card>
+    </Surface>
   );
 
-  if (loading) {
-    return (
-      <View style={[styles.container, { justifyContent: 'center' }]}>
-        <ActivityIndicator size="large" color="#6F4E37" />
-      </View>
-    );
-  }
-
   return (
-    <View style={styles.container}>
-      <View style={styles.headerContainer}>
+    <View style={styles.mainContainer}>
+      <View style={styles.topNav}>
         <View>
-          <Text variant="headlineMedium" style={styles.headerTitle}>My Favorites</Text>
-          <Text variant="bodyMedium" style={styles.headerSubtitle}>Your go-to orders, just a tap away.</Text>
+          <Text style={styles.navTitle}>Favorites</Text>
+          <Text style={styles.navSub}>Your curated collection</Text>
         </View>
+        <TouchableOpacity onPress={() => setCartVis(true)} style={styles.cartIconBox}>
+          <MaterialCommunityIcons name="basket-outline" size={28} color="#4A3B32" />
+          {cartItems.length > 0 && <Badge style={styles.cartBadge}>{cartItems.length}</Badge>}
+        </TouchableOpacity>
       </View>
 
-      <View style={styles.searchContainer}>
-        <Searchbar
-          placeholder="Search favorites..."
-          onChangeText={setSearchQuery}
-          value={searchQuery}
-          style={styles.searchBar}
-          iconColor="#6F4E37"
-          inputStyle={{ fontSize: 14 }}
+      <Searchbar placeholder="Search saved items..." onChangeText={setSearch} value={search} style={styles.customSearch} inputStyle={styles.searchInput} iconColor="#6F4E37" />
+      
+      {loading ? <ActivityIndicator size="large" color="#6F4E37" style={{flex:1}} /> : (
+        <FlatList
+          data={favorites.filter(f => f.name.toLowerCase().includes(search.toLowerCase()))}
+          renderItem={renderItem}
+          keyExtractor={item => item._id}
+          contentContainerStyle={styles.scrollList}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.centeredEmpty}>
+              <MaterialCommunityIcons name="heart-plus-outline" size={70} color="#D2B48C" />
+              <Text style={styles.emptyLabel}>No favorites found</Text>
+              <Button mode="outlined" textColor="#6F4E37" onPress={() => navigation.navigate('Home')} style={styles.exploreBtn}>Explore Menu</Button>
+            </View>
+          }
         />
-      </View>
-
-      <FlatList
-        data={filteredFavorites}
-        renderItem={renderFavItem}
-        keyExtractor={item => item._id}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <MaterialCommunityIcons name="heart-broken-outline" size={60} color="#CCC" />
-            <Text style={styles.emptyText}>You haven't added any favorites yet.</Text>
-            <Button 
-              mode="contained" 
-              buttonColor="#6F4E37" 
-              style={{marginTop: 20}} 
-              onPress={() => navigation.navigate('Home')}
-            >
-              Browse Menu
-            </Button>
-          </View>
-        }
-      />
+      )}
+      <CustomizeDrinkModal visible={custVis} onClose={() => setCustVis(false)} item={selectedItem} onConfirm={onConfirmCust} />
+      <CartModal visible={cartVis} onClose={() => setSelectedItem(null)} cartItems={cartItems} setCartItems={setCartItems} />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAF5F0', paddingTop: 50 },
-  headerContainer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 15 },
-  headerTitle: { fontWeight: 'bold', color: '#4A3B32' },
-  headerSubtitle: { color: '#888', marginTop: 5 },
-  searchContainer: { paddingHorizontal: 20, marginBottom: 20 },
-  searchBar: { backgroundColor: '#fff', borderRadius: 15, height: 50, elevation: 2 },
-  listContent: { paddingHorizontal: 20, paddingBottom: 100 },
-  favCard: { backgroundColor: '#fff', marginBottom: 15, borderRadius: 15, padding: 10 },
-  cardRow: { flexDirection: 'row', alignItems: 'center' },
-  productImage: { width: 70, height: 70, borderRadius: 12, backgroundColor: '#EFEFEF' },
-  cardInfo: { flex: 1, marginLeft: 15, justifyContent: 'center' },
-  productName: { fontWeight: 'bold', color: '#333', marginBottom: 2 },
-  customizationText: { color: '#888', marginBottom: 6, fontSize: 11 },
-  price: { fontWeight: 'bold', color: '#6F4E37' },
-  actionColumn: { justifyContent: 'space-between', alignItems: 'center', height: 70 },
-  heartBtn: { margin: 0, height: 24 },
-  addToCartBtn: { backgroundColor: '#6F4E37', borderRadius: 8, width: 32, height: 32, justifyContent: 'center', alignItems: 'center', marginTop: 10 },
-  emptyState: { alignItems: 'center', justifyContent: 'center', marginTop: 80 },
-  emptyText: { marginTop: 10, color: '#888', fontSize: 16 },
+  mainContainer: { flex: 1, backgroundColor: '#FCFAFA', paddingTop: 50 },
+  topNav: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 25, marginBottom: 20 },
+  navTitle: { fontSize: 28, fontWeight: 'bold', color: '#2C1E16' },
+  navSub: { fontSize: 13, color: '#A08D84', marginTop: -2 },
+  cartIconBox: { width: 45, height: 45, justifyContent: 'center', alignItems: 'center' },
+  cartBadge: { position: 'absolute', top: 4, right: 4, backgroundColor: '#D44D44' },
+  customSearch: { marginHorizontal: 25, marginBottom: 25, backgroundColor: '#fff', borderRadius: 14, height: 48, elevation: 3, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10 },
+  searchInput: { fontSize: 15 },
+  scrollList: { paddingHorizontal: 25, paddingBottom: 50 },
+  cardSurface: { backgroundColor: '#fff', borderRadius: 20, marginBottom: 18 },
+  cardInternal: { flexDirection: 'row', padding: 12, alignItems: 'center' },
+  prodImg: { width: 80, height: 80, borderRadius: 16, backgroundColor: '#F3F3F3' },
+  prodDetails: { flex: 1, marginLeft: 16 },
+  prodCat: { fontSize: 10, color: '#C19A6B', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: 4 },
+  prodName: { fontSize: 16, fontWeight: '700', color: '#3E2723' },
+  prodPrice: { fontSize: 18, fontWeight: '800', color: '#6F4E37', marginTop: 4 },
+  sideActions: { alignItems: 'center', justifyContent: 'space-between', height: 80 },
+  miniBtn: { margin: 0 },
+  addCartBtn: { backgroundColor: '#6F4E37', padding: 8, borderRadius: 12, elevation: 4 },
+  centeredEmpty: { alignItems: 'center', marginTop: 120 },
+  emptyLabel: { color: '#8D6E63', fontSize: 16, marginTop: 12, fontWeight: '500' },
+  exploreBtn: { marginTop: 20, borderColor: '#6F4E37', borderWidth: 1.5 }
 });
 
 export default FavoritesPage;
