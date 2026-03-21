@@ -11,6 +11,7 @@ import ProfilePage from "../Shared/ProfilePage";
 import NotificationPage from "../screens/Customer/NotificationPage"; 
 import PromoList from "../screens/Customer/PromoList"; 
 import PromoDetail from "../screens/Customer/PromoDetail";
+import PlaceOrderPage from "../screens/Customer/PlaceOrderPage";
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -44,6 +45,7 @@ export default function UserStackNavigator() {
       <Stack.Screen name="Notifications" component={NotificationPage} />
       <Stack.Screen name="PromoList" component={PromoList} />
       <Stack.Screen name="PromoDetail" component={PromoDetail} />
+      <Stack.Screen name="PlaceOrder" component={PlaceOrderPage} />
     </Stack.Navigator>
   );
 }
