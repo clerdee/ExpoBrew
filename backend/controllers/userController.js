@@ -17,16 +17,14 @@ const deleteUser = async (req, res) => {
 
 const toggleFavorite = async (req, res) => {
   try {
-    const user = await User.findById(req.user._id);
+    const user = await User.findById(req.user._id); 
     const productId = req.params.productId;
 
     if (user.favorites.includes(productId)) {
-      // Remove if already favorited
       user.favorites = user.favorites.filter(id => id.toString() !== productId);
       await user.save();
       return res.status(200).json({ message: "Removed from favorites", favorites: user.favorites });
     } else {
-      // Add if not favorited
       user.favorites.push(productId);
       await user.save();
       return res.status(200).json({ message: "Added to favorites", favorites: user.favorites });
