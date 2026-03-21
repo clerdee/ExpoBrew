@@ -1,80 +1,63 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Modal, ScrollView } from 'react-native';
 import { Text, Card, Button, Divider, IconButton, ActivityIndicator, Chip, TextInput } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import Toast from 'react-native-toast-message';
+import { useDispatch, useSelector } from 'react-redux';
 import { API_BASE_URL } from '../../configs/config';
+import { fetchOrders } from '../../redux/actions/orderActions';
+import { fetchMyReview, submitReview, clearReviewState } from '../../redux/actions/reviewActions';
 
 const STAR_OPTIONS = [1, 2, 3, 4, 5];
 
 export default function OrderPage({ navigation }) {
+  const dispatch = useDispatch();
+  const { items: orders, loading, error } = useSelector((state) => state.orderList);
+  const { currentReview, loading: reviewLoading, submitting } = useSelector((state) => state.reviewState);
+
   const [activeTab, setActiveTab] = useState('Active');
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [isGuest, setIsGuest] = useState(false);
   const [reviewModalVis, setReviewModalVis] = useState(false);
-  const [reviewLoading, setReviewLoading] = useState(false);
-  const [submitLoading, setSubmitLoading] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
-  const [reviewId, setReviewId] = useState(null);
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
 
-  const fetchOrders = useCallback(async () => {
-    try {
-      setLoading(true);
+  useEffect(() => {
+    (async () => {
       const token = await SecureStore.getItemAsync('userToken');
+      setIsGuest(!token);
+      if (token) dispatch(fetchOrders());
+    })();
+  }, [dispatch]);
 
-      if (!token) {
-        setIsGuest(true);
-        setLoading(false);
-        setRefreshing(false);
-        return;
-      }
+  useEffect(() => {
+    if (currentReview) {
+      setRating(currentReview.rating);
+      setComment(currentReview.comment || '');
+    } else {
+      setRating(5);
+      setComment('');
+    }
+  }, [currentReview]);
 
-      setIsGuest(false);
-      const { data } = await axios.get(`${API_BASE_URL}/orders/myorders`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setOrders(data);
-    } catch (e) { console.error('Order fetch error:', e); }
-    finally { setLoading(false); setRefreshing(false); }
-  }, []);
+  useEffect(() => {
+    if (error) {
+      Toast.show({ type: 'error', text1: 'Orders Error', text2: error });
+    }
+  }, [error]);
 
-  useEffect(() => { fetchOrders(); }, [fetchOrders]);
+  const refreshOrders = async () => {
+    setRefreshing(true);
+    await dispatch(fetchOrders());
+    setRefreshing(false);
+  };
 
   const filtered = orders.filter(o =>
     activeTab === 'Active' ? ['Pending', 'Preparing', 'Ready'].includes(o.status) : o.status === 'Completed'
   );
-
-  const loadExistingReview = async (orderId, productId) => {
-    try {
-      setReviewLoading(true);
-      const token = await SecureStore.getItemAsync('userToken');
-      const { data } = await axios.get(`${API_BASE_URL}/reviews/my-review`, {
-        params: { orderId, productId },
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      if (data) {
-        setReviewId(data._id);
-        setRating(data.rating);
-        setComment(data.comment || '');
-      } else {
-        setReviewId(null);
-        setRating(5);
-        setComment('');
-      }
-    } catch (e) {
-      Toast.show({ type: 'error', text1: 'Review Error', text2: 'Could not load your existing review.' });
-    } finally {
-      setReviewLoading(false);
-    }
-  };
 
   const openReviewModal = async (order) => {
     const reviewableItems = order.orderItems.filter(item => !!item.product);
@@ -83,46 +66,56 @@ export default function OrderPage({ navigation }) {
       return;
     }
 
-    const initialProduct = reviewableItems[0];
+    const firstItem = reviewableItems[0];
     setSelectedOrder(order);
-    setSelectedProduct(initialProduct);
+    setSelectedProduct(firstItem);
     setReviewModalVis(true);
-    await loadExistingReview(order._id, initialProduct.product);
+
+    try {
+      await dispatch(fetchMyReview(order._id, firstItem.product));
+    } catch (e) {
+      Toast.show({ type: 'error', text1: 'Review Error', text2: e.message });
+    }
   };
 
   const handleSelectReviewItem = async (item) => {
     setSelectedProduct(item);
-    await loadExistingReview(selectedOrder._id, item.product);
+    try {
+      await dispatch(fetchMyReview(selectedOrder._id, item.product));
+    } catch (e) {
+      Toast.show({ type: 'error', text1: 'Review Error', text2: e.message });
+    }
+  };
+
+  const closeReviewModal = () => {
+    setReviewModalVis(false);
+    setSelectedOrder(null);
+    setSelectedProduct(null);
+    setRating(5);
+    setComment('');
+    dispatch(clearReviewState());
   };
 
   const handleSubmitReview = async () => {
     if (!selectedOrder || !selectedProduct?.product) return;
 
     try {
-      setSubmitLoading(true);
-      const token = await SecureStore.getItemAsync('userToken');
-      const payload = { rating, comment, orderId: selectedOrder._id };
+      await dispatch(submitReview({
+        productId: selectedProduct.product,
+        orderId: selectedOrder._id,
+        rating,
+        comment,
+        reviewId: currentReview?._id
+      }));
 
-      if (reviewId) {
-        await axios.put(`${API_BASE_URL}/reviews/${reviewId}`, { rating, comment }, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        Toast.show({ type: 'success', text1: 'Review Updated', text2: `Updated your rating for ${selectedProduct.name}.` });
-      } else {
-        await axios.post(`${API_BASE_URL}/products/${selectedProduct.product}/reviews`, payload, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        Toast.show({ type: 'success', text1: 'Review Submitted', text2: `Thanks for reviewing ${selectedProduct.name}!` });
-      }
-
-      setReviewModalVis(false);
-      setReviewId(null);
-      setComment('');
-      setRating(5);
+      Toast.show({
+        type: 'success',
+        text1: currentReview?._id ? 'Review Updated' : 'Review Submitted',
+        text2: `${selectedProduct.name} review saved successfully.`
+      });
+      closeReviewModal();
     } catch (e) {
-      Toast.show({ type: 'error', text1: 'Review Failed', text2: e.response?.data?.message || 'Could not submit your review.' });
-    } finally {
-      setSubmitLoading(false);
+      Toast.show({ type: 'error', text1: 'Review Failed', text2: e.message });
     }
   };
 
@@ -197,18 +190,18 @@ export default function OrderPage({ navigation }) {
           </View>
           {loading ? <ActivityIndicator style={{ flex: 1 }} color="#6F4E37" /> : (
             <FlatList data={filtered} renderItem={renderOrder} keyExtractor={i => i._id} contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}
-              refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchOrders(); }} />}
+              refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refreshOrders} />}
               ListEmptyComponent={<View style={styles.empty}><MaterialCommunityIcons name="coffee-off-outline" size={64} color="#CCC" /><Text style={styles.emptyTxt}>No {activeTab.toLowerCase()} orders.</Text></View>} />
           )}
         </>
       )}
 
-      <Modal animationType="slide" transparent visible={reviewModalVis} onRequestClose={() => setReviewModalVis(false)}>
+      <Modal animationType="slide" transparent visible={reviewModalVis} onRequestClose={closeReviewModal}>
         <View style={styles.overlay}>
           <View style={styles.sheet}>
             <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>{reviewId ? 'Update Review' : 'Leave a Review'}</Text>
-              <IconButton icon="close" onPress={() => setReviewModalVis(false)} />
+              <Text style={styles.sheetTitle}>{currentReview?._id ? 'Update Review' : 'Leave a Review'}</Text>
+              <IconButton icon="close" onPress={closeReviewModal} />
             </View>
 
             {selectedOrder && (
@@ -252,8 +245,8 @@ export default function OrderPage({ navigation }) {
                 {reviewLoading ? (
                   <ActivityIndicator color="#6F4E37" style={{ marginVertical: 20 }} />
                 ) : (
-                  <Button mode="contained" buttonColor="#6F4E37" onPress={handleSubmitReview} loading={submitLoading} disabled={submitLoading} style={styles.submitBtn}>
-                    {reviewId ? 'Update Review' : 'Submit Review'}
+                  <Button mode="contained" buttonColor="#6F4E37" onPress={handleSubmitReview} loading={submitting} disabled={submitting} style={styles.submitBtn}>
+                    {currentReview?._id ? 'Update Review' : 'Submit Review'}
                   </Button>
                 )}
               </ScrollView>

@@ -5,7 +5,9 @@ import * as SecureStore from 'expo-secure-store';
 import * as SQLite from 'expo-sqlite';
 import axios from 'axios';
 import { useFocusEffect } from '@react-navigation/native';
+import { useDispatch, useSelector } from 'react-redux';
 import { API_BASE_URL } from '../../configs/config';
+import { fetchProducts } from '../../redux/actions/productActions';
 import CardComponent from '../../components/CardComponent';
 import CartModal from '../../components/CartModal';
 import AuthModal from '../../components/AuthModal';
@@ -23,9 +25,9 @@ const BANNERS = [
   { id: 3, img: require('../../../assets/pic3.jpg'), title: "HAPPY HOUR", sub: "BUY 1 GET 1 FREE" }
 ];
 
-export default function HomePage({ navigation }) {
+export default function HomePage() {
   const [cartVis, setCartVis] = useState(false), [authVis, setAuthVis] = useState(false), [profVis, setProfVis] = useState(false);
-  const [custVis, setCustVis] = useState(false), [user, setUser] = useState(null), [products, setProducts] = useState([]);
+  const [custVis, setCustVis] = useState(false), [user, setUser] = useState(null);
   const [cartItems, setCartItems] = useState([]), [selectedItem, setSelectedItem] = useState(null);
   const [loading, setLoading] = useState(true), [activeCat, setActiveCat] = useState('All'), [favorites, setFavorites] = useState([]);
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -43,8 +45,18 @@ export default function HomePage({ navigation }) {
     return () => clearInterval(timer);
   }, []);
 
-  const loadData = async () => {
+  useEffect(() => {
+    dispatch(fetchProducts({
+      search: searchQuery.trim() || undefined,
+      category: activeCat !== 'All' ? activeCat : undefined,
+      minPrice: minPrice || undefined,
+      maxPrice: maxPrice || undefined
+    }));
+  }, [dispatch, searchQuery, activeCat, minPrice, maxPrice]);
+
+  const loadLocalData = async () => {
     try {
+      setLoading(true);
       const db = await SQLite.openDatabaseAsync('coffeecart.db');
       await db.execAsync('CREATE TABLE IF NOT EXISTS cart_table (id INTEGER PRIMARY KEY NOT NULL, cart_data TEXT);');
       const saved = await db.getFirstAsync('SELECT cart_data FROM cart_table WHERE id = 1;');
@@ -52,17 +64,26 @@ export default function HomePage({ navigation }) {
 
       const uStr = await SecureStore.getItemAsync("userInfo"), token = await SecureStore.getItemAsync("userToken");
       if (uStr) setUser(JSON.parse(uStr));
-      
+
       const [pRes, fRes] = await Promise.all([
-        axios.get(`${API_BASE_URL}/products`),
+        axios.get(`${API_BASE_URL}/products`, {
+          params: {
+            search: searchQuery.trim() || undefined,
+            category: activeCat !== 'All' ? activeCat : undefined,
+            minPrice: minPrice || undefined,
+            maxPrice: maxPrice || undefined
+          }
+        }),
         token ? axios.get(`${API_BASE_URL}/users/favorites`, { headers: { Authorization: `Bearer ${token}` } }) : { data: [] }
       ]);
       setProducts(pRes.data);
       setFavorites(fRes.data.map(f => f._id));
-    } catch (e) { console.error("Init Error:", e); } finally { setLoading(false); }
+    } catch (e) { console.error('Init Error:', e); } finally { setLoading(false); }
   };
 
-  useFocusEffect(useCallback(() => { loadData(); }, [searchQuery, activeCat, minPrice, maxPrice]));
+  useFocusEffect(useCallback(() => {
+    loadLocalData();
+  }, []));
 
   useEffect(() => {
     (async () => { if (!loading) {
@@ -184,9 +205,9 @@ export default function HomePage({ navigation }) {
 
   return (
     <View style={styles.container}>
-      {loading ? <ActivityIndicator size="large" color="#6F4E37" style={{flex:1}} /> : (
-        <FlatList 
-          data={filtered} 
+      {loading ? <ActivityIndicator size="large" color="#6F4E37" style={{ flex: 1 }} /> : (
+        <FlatList
+          data={filtered}
           renderItem={({ item }) => (
             <CardComponent 
               item={item} 

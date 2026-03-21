@@ -3,13 +3,14 @@ import { View, ActivityIndicator, StyleSheet } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import { Provider as PaperProvider } from "react-native-paper";
+import { Provider as ReduxProvider } from 'react-redux';
 import * as SecureStore from 'expo-secure-store';
-import AsyncStorage from '@react-native-async-storage/async-storage'; 
 import Toast from 'react-native-toast-message'; 
 
 import UserStackNavigator from "./src/Navigators/UserStackNavigator";
 import AuthStackNavigator from "./src/Navigators/AuthStackNavigator";
 import AdminStackNavigator from "./src/Navigators/AdminStackNavigator";
+import store from './src/redux/store';
 
 const Stack = createStackNavigator();
 
@@ -54,16 +55,18 @@ export default function App() {
   }
 
 return (
-    <PaperProvider>
-      <NavigationContainer>
+    <ReduxProvider store={store}>
+      <PaperProvider>
+        <NavigationContainer>
         <Stack.Navigator initialRouteName={initialRoute} screenOptions={{ headerShown: false }} >
           <Stack.Screen name="Auth" component={AuthStackNavigator} />
           <Stack.Screen name="Home" component={UserStackNavigator} />
           <Stack.Screen name="AdminHome" component={AdminStackNavigator} />
         </Stack.Navigator>
-      </NavigationContainer>
-      <Toast /> 
-    </PaperProvider>
+        </NavigationContainer>
+        <Toast />
+      </PaperProvider>
+    </ReduxProvider>
   );
 }
 
