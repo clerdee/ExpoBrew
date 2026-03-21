@@ -17,4 +17,17 @@ const getDashboardStats = async (req, res) => {
   } catch (e) { res.status(500).json({ message: "Server Error" }); }
 };
 
-module.exports = { getDashboardStats };
+const createPromo = async (req, res) => {
+  try {
+    const promo = new Promo(req.body);
+    await promo.save();
+    res.status(201).json({ message: "Promo created and Notification sent!", promo });
+  } catch (e) { res.status(500).json({ message: "Error creating promo" }); }
+};
+
+const getPromos = async (req, res) => {
+  try { res.status(200).json(await Promo.find().sort({ createdAt: -1 })); }
+  catch (e) { res.status(500).json({ message: "Error fetching promos" }); }
+};
+
+module.exports = { getDashboardStats, createPromo, getPromos };
