@@ -29,6 +29,7 @@ export default function UserStackNavigator() {
           else if (route.name === "Orders") iconName = "coffee";
           else if (route.name === "Stores") iconName = "store";
           else if (route.name === "Favorites") iconName = "heart";
+          else if (route.name === "Profile") iconName = "account";
 
           return (
             <MaterialCommunityIcons name={iconName} size={size} color={color} />
