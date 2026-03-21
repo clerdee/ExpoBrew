@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { View, StyleSheet, FlatList, ScrollView, TouchableOpacity, ActivityIndicator } from "react-native";
 import { Text, Card } from "react-native-paper";
 import * as SecureStore from "expo-secure-store";
+import * as SQLite from 'expo-sqlite';
 import axios from 'axios';
 import { API_BASE_URL } from '../../configs/config';
 import CardComponent from "../../components/CardComponent";
@@ -19,15 +20,37 @@ export default function HomePage() {
   const [cartItems, setCartItems] = useState([]), [selectedItem, setSelectedItem] = useState(null);
   const [loading, setLoading] = useState(true), [activeCat, setActiveCat] = useState('All');
 
+  // --- 1. INITIALIZE SQLITE, LOAD CART & FETCH DATA ---
   useEffect(() => {
     (async () => {
       try {
+        // SQLite: Open DB, Create Table, and Fetch saved Cart
+        const db = await SQLite.openDatabaseAsync('coffeecart.db');
+        await db.execAsync('CREATE TABLE IF NOT EXISTS cart_table (id INTEGER PRIMARY KEY NOT NULL, cart_data TEXT);');
+        const saved = await db.getFirstAsync('SELECT cart_data FROM cart_table WHERE id = 1;');
+        if (saved && saved.cart_data) setCartItems(JSON.parse(saved.cart_data));
+
+        // Load User Info & Backend Products
         const u = await SecureStore.getItemAsync("userInfo");
         if (u) setUser(JSON.parse(u));
         setProducts((await axios.get(`${API_BASE_URL}/products`)).data);
-      } catch (e) { console.error(e); } finally { setLoading(false); }
+      } catch (e) { console.error("Initialization Error:", e); } 
+      finally { setLoading(false); }
     })();
   }, []);
+
+  // --- 2. AUTO-SAVE TO SQLITE ON CART CHANGE ---
+  useEffect(() => {
+    (async () => {
+      if (!loading) {
+        try {
+          const db = await SQLite.openDatabaseAsync('coffeecart.db');
+          // 'INSERT OR REPLACE' updates the existing row so it doesn't duplicate
+          await db.runAsync('INSERT OR REPLACE INTO cart_table (id, cart_data) VALUES (1, ?);', JSON.stringify(cartItems));
+        } catch (e) { console.error("SQLite Save Error:", e); }
+      }
+    })();
+  }, [cartItems, loading]);
 
   const handleAddPress = (p) => { setSelectedItem(p); setCustVis(true); };
 
