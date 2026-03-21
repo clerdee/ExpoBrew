@@ -8,8 +8,7 @@ const getDashboardStats = async (req, res) => {
     const activeOrders = await Order.countDocuments({ status: { $in: ['Pending', 'Preparing', 'Ready'] } });
     const totalProducts = await Product.countDocuments();
     const totalCustomers = await User.countDocuments({ role: 'customer' });
-    const totalAdmins = await User.countDocuments({ role: 'admin' });
-    
+    const totalAdmins = await User.countDocuments({ role: 'admin' });   
     const revObj = await Order.aggregate([{ $match: { status: 'Completed' } }, { $group: { _id: null, total: { $sum: '$totalPrice' } } }]);
     const totalRevenue = revObj.length > 0 ? revObj[0].total : 0;
 
@@ -38,9 +37,16 @@ const updateOrderStatus = async (req, res) => {
 const createPromo = async (req, res) => {
   try {
     const promo = await Promo.create(req.body);
+    
+    let prefix = '';
+    if (promo.type === 'Percentage') prefix = `${promo.value}% OFF: `;
+    else if (promo.type === 'Fixed') prefix = `₱${promo.value} OFF: `;
+    else if (promo.type === 'FreeShipping') prefix = `🚚 FREE DELIVERY: `;
+    else if (promo.type === 'SpecialDeal') prefix = `🔥 MEGA DEAL: `;
+
     await Notification.create({
-      title: `🎁 New Promo: ${promo.title}`,
-      message: `${promo.description}. Use code: ${promo.code}`,
+      title: `🎁 ${promo.title}`,
+      message: `${prefix}${promo.description}. Use code: ${promo.code}`,
       type: 'Promo'
     });
     res.status(201).json(promo);
