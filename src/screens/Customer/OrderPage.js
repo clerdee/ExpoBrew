@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { View, StyleSheet, FlatList, TouchableOpacity, RefreshControl } from 'react-native';
 import { Text, Card, Button, Divider, IconButton, ActivityIndicator } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -14,12 +15,15 @@ export default function OrderPage({ navigation }) {
   const [activeTab, setActiveTab] = useState('Active'), [refreshing, setRefreshing] = useState(false);
   const [isGuest, setIsGuest] = useState(false);
 
-  useEffect(() => {
-    (async () => {
-      const token = await SecureStore.getItemAsync('userToken');
-      setIsGuest(!token); if (token) dispatch(fetchOrders());
-    })();
-  }, [dispatch]);
+  useFocusEffect(
+      useCallback(() => {
+        (async () => {
+          const token = await SecureStore.getItemAsync('userToken');
+          setIsGuest(!token); 
+          if (token) dispatch(fetchOrders());
+        })();
+      }, [dispatch])
+    );
 
   useEffect(() => { if (error) Toast.show({ type: 'error', text1: 'Orders Error', text2: error }); }, [error]);
 

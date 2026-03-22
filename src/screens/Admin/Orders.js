@@ -73,7 +73,7 @@ export default function AdminOrders({ navigation }) {
   const renderItem = ({ item: o }) => {
     const sCfg = { Pending: { c: '#F1C40F' }, Preparing: { c: '#E67E22' }, Ready: { c: '#3498DB' }, Completed: { c: '#27AE60' }, Cancelled: { c: '#E74C3C' } }[o.status] || { c: '#888' };
     return (
-      <TouchableOpacity activeOpacity={0.8} onPress={() => navigation.navigate('OrderDetail', { order: o, refresh: () => fetchOrders(true) })}>
+      <TouchableOpacity activeOpacity={0.8} onPress={() => navigation.navigate('OrderDetail', { order: o })}>
         <Card style={styles.card} mode="elevated">
           <View style={styles.cardContent}>
             <View style={styles.rowTop}>
