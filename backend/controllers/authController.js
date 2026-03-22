@@ -191,4 +191,54 @@ const loginUser = async (req, res) => {
   }
 };
 
-module.exports = { registerUser, loginUser, verifyOtp, buildUserPayload };
+const googleLogin = async (req, res) => {
+  try {
+    const { email, name, googleId, profileImage } = req.body;
+    if (!email || !googleId) return res.status(400).json({ message: 'Email and Google ID are required.' });
+
+    let user = await User.findOne({ email: normalizeEmail(email) });
+
+    if (!user) {
+      user = await User.create({ name, email: normalizeEmail(email), googleId, profileImage });
+    } else if (!user.googleId) {
+      user.googleId = googleId;
+      if (!user.profileImage && profileImage) user.profileImage = profileImage;
+      await user.save();
+    }
+
+    if (user.isActive === false) return res.status(403).json({ message: 'Account deactivated.' });
+
+    const token = jwt.sign({ id: user._id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    return res.status(200).json({ message: 'Google login successful!', token, user: buildUserPayload(user) });
+  } catch (error) {
+    console.error('Google login error:', error);
+    return res.status(500).json({ message: 'Server error.', detail: error.message });
+  }
+};
+
+const facebookLogin = async (req, res) => {
+  try {
+    const { email, name, facebookId, profileImage } = req.body;
+    if (!email || !facebookId) return res.status(400).json({ message: 'Email and Facebook ID are required.' });
+
+    let user = await User.findOne({ email: normalizeEmail(email) });
+
+    if (!user) {
+      user = await User.create({ name, email: normalizeEmail(email), facebookId, profileImage });
+    } else if (!user.facebookId) {
+      user.facebookId = facebookId;
+      if (!user.profileImage && profileImage) user.profileImage = profileImage;
+      await user.save();
+    }
+
+    if (user.isActive === false) return res.status(403).json({ message: 'Account deactivated.' });
+
+    const token = jwt.sign({ id: user._id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    return res.status(200).json({ message: 'Facebook login successful!', token, user: buildUserPayload(user) });
+  } catch (error) {
+    console.error('Facebook login error:', error);
+    return res.status(500).json({ message: 'Server error.', detail: error.message });
+  }
+};
+
+module.exports = { registerUser, loginUser, verifyOtp, buildUserPayload, googleLogin, facebookLogin };
