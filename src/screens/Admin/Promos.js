@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { View, StyleSheet, FlatList, Modal, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { View, StyleSheet, FlatList, Modal, ScrollView, RefreshControl } from 'react-native';
 import { Text, Card, IconButton, ActivityIndicator, Searchbar, Button, TextInput, Chip } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import axios from 'axios';
@@ -10,50 +10,40 @@ import { API_BASE_URL } from '../../configs/config';
 const TYPES = [ { l: '% Off', v: 'Percentage', i: 'percent' }, { l: '₱ Off', v: 'Fixed', i: 'currency-php' }, { l: 'Free Ship', v: 'FreeShipping', i: 'truck-fast' }, { l: 'Deal', v: 'SpecialDeal', i: 'star-shooting' } ];
 
 export default function Promos({ navigation }) {
-  const [promos, setPromos] = useState([]), [loading, setLoading] = useState(true), [search, setSearch] = useState('');
-  const [modal, setModal] = useState(false);
+  const [promos, setPromos] = useState([]), [loading, setLoading] = useState(true), [refreshing, setRefreshing] = useState(false);
+  const [search, setSearch] = useState(''), [modal, setModal] = useState(false);
   const [form, setForm] = useState({ title: '', description: '', type: 'Percentage', value: '', code: '', validUntil: new Date(Date.now() + 86400000 * 7).toISOString().split('T')[0] });
 
-  useEffect(() => { fetchPromos(); }, []);
-
-  const fetchPromos = async () => {
-    setLoading(true);
+  const fetchPromos = useCallback(async (isSilent = false) => {
+    if (!isSilent) setLoading(true);
     try {
       const t = await SecureStore.getItemAsync('userToken');
       const { data } = await axios.get(`${API_BASE_URL}/admin/promos`, { headers: { Authorization: `Bearer ${t}` } });
       setPromos(data);
-    } catch (e) { Toast.show({ type: 'error', text1: 'Failed to load promos' }); } finally { setLoading(false); }
-  };
+    } catch (e) { Toast.show({ type: 'error', text1: 'Failed to load promos' }); } 
+    finally { setLoading(false); setRefreshing(false); }
+  }, []);
 
-const handleCreate = async () => {
-    if (!form.title || !form.code || !form.validUntil || !form.description) {
-      return Toast.show({ type: 'error', text1: 'Please fill all required fields' });
-    }
-    
+  useEffect(() => { 
+    fetchPromos(); 
+    const interval = setInterval(() => fetchPromos(true), 10000); 
+    return () => clearInterval(interval); 
+  }, [fetchPromos]);
+
+  const handleCreate = async () => {
+    if (!form.title || !form.code || !form.validUntil || !form.description) return Toast.show({ type: 'error', text1: 'Please fill all required fields' });
     try {
       const t = await SecureStore.getItemAsync('userToken');
       await axios.post(`${API_BASE_URL}/admin/promos`, { ...form, value: Number(form.value) || 0 }, { headers: { Authorization: `Bearer ${t}` } });
-      
       Toast.show({ type: 'success', text1: 'Promo Blast Sent!' });
-      setModal(false); 
-      fetchPromos();
-      
-    } catch (e) { 
-      console.log("Promo Error: ", e.response?.data || e.message);
-      Toast.show({ 
-        type: 'error', 
-        text1: 'Creation failed', 
-        text2: e.response?.data?.message || 'Check your terminal for details' 
-      }); 
-    }
+      setModal(false); fetchPromos(true);
+    } catch (e) { Toast.show({ type: 'error', text1: 'Creation failed', text2: e.response?.data?.message || 'Check terminal details' }); }
   };
 
   const filtered = useMemo(() => promos.filter(p => p.title.toLowerCase().includes(search.toLowerCase()) || p.code.toLowerCase().includes(search.toLowerCase())), [promos, search]);
 
   const renderItem = ({ item: p }) => {
-    const isExp = new Date(p.validUntil) < new Date();
-    const typeObj = TYPES.find(t => t.v === p.type) || TYPES[0];
-    
+    const isExp = new Date(p.validUntil) < new Date(), typeObj = TYPES.find(t => t.v === p.type) || TYPES[0];
     return (
       <Card style={[styles.card, isExp && { opacity: 0.6 }]} mode="elevated">
         <View style={styles.cContent}>
@@ -80,8 +70,10 @@ const handleCreate = async () => {
         <View style={styles.sRow}><Searchbar placeholder="Search codes..." onChangeText={setSearch} value={search} style={styles.sBar} iconColor="#4A2E1B" elevation={2} /></View>
       </View>
 
-      {loading ? <ActivityIndicator size="large" color="#4A2E1B" style={styles.loader} /> : 
-        <FlatList data={filtered} keyExtractor={i => i._id} renderItem={renderItem} contentContainerStyle={styles.list} ListEmptyComponent={<Text style={styles.empty}>No promos found.</Text>} />
+      {loading && !refreshing ? <ActivityIndicator size="large" color="#4A2E1B" style={styles.loader} /> : 
+        <FlatList data={filtered} keyExtractor={i => i._id} renderItem={renderItem} contentContainerStyle={styles.list} ListEmptyComponent={<Text style={styles.empty}>No promos found.</Text>} 
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchPromos(true); }} tintColor="#4A2E1B" />}
+        />
       }
 
       <Modal visible={modal} animationType="slide" transparent>
@@ -90,22 +82,15 @@ const handleCreate = async () => {
           <ScrollView showsVerticalScrollIndicator={false}>
             <TextInput label="Promo Title *" value={form.title} onChangeText={t=>setForm({...form, title:t})} mode="outlined" style={styles.inp} activeOutlineColor="#4A2E1B"/>
             <TextInput label="Message / Description" value={form.description} onChangeText={t=>setForm({...form, description:t})} mode="outlined" multiline numberOfLines={2} style={styles.inp} activeOutlineColor="#4A2E1B"/>
-            
             <Text style={styles.lbl}>Promotion Type</Text>
             <View style={styles.chipRow}>
-              {TYPES.map(t => (
-                <Chip key={t.v} selected={form.type === t.v} onPress={()=>setForm({...form, type: t.v})} style={[styles.chip, form.type === t.v && {backgroundColor: '#6F4E37'}]} textStyle={{color: form.type === t.v ? '#FFF' : '#333'}}>
-                  {t.l}
-                </Chip>
-              ))}
+              {TYPES.map(t => <Chip key={t.v} selected={form.type === t.v} onPress={()=>setForm({...form, type: t.v})} style={[styles.chip, form.type === t.v && {backgroundColor: '#6F4E37'}]} textStyle={{color: form.type === t.v ? '#FFF' : '#333'}}>{t.l}</Chip> )}
             </View>
-
             <View style={styles.fRow}>
               <TextInput label="Value (e.g., 15)" value={form.value} onChangeText={t=>setForm({...form, value:t})} mode="outlined" keyboardType="numeric" style={[styles.inp, {flex:0.8, marginRight:10}]} activeOutlineColor="#4A2E1B" disabled={form.type === 'FreeShipping'}/>
               <TextInput label="Promo Code *" value={form.code} onChangeText={t=>setForm({...form, code:t})} mode="outlined" style={[styles.inp, {flex:1.2}]} activeOutlineColor="#4A2E1B"/>
             </View>
             <TextInput label="Expires On (YYYY-MM-DD)" value={form.validUntil} onChangeText={t=>setForm({...form, validUntil:t})} mode="outlined" style={styles.inp} activeOutlineColor="#4A2E1B"/>
-            
             <Button mode="contained" onPress={handleCreate} buttonColor="#4A2E1B" style={styles.sBtn}>SEND TO ALL CUSTOMERS</Button>
           </ScrollView>
         </View></View>

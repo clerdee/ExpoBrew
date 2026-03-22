@@ -90,10 +90,16 @@ export default function HomePage({ navigation }) {
   };
 
   const filtered = useMemo(() => products.filter(p => {
-    const matchSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.description.toLowerCase().includes(searchQuery.toLowerCase());
+    const term = searchQuery.toLowerCase();
+    const matchSearch = p.name.toLowerCase().includes(term) || (p.description || '').toLowerCase().includes(term);
     const matchCategory = activeCat === 'All' || p.category === activeCat;
-    return matchSearch && matchCategory;
-  }), [products, searchQuery, activeCat]);
+    
+    const pPrice = Number(p.price) || 0;
+    const matchMin = minPrice === '' || pPrice >= Number(minPrice);
+    const matchMax = maxPrice === '' || pPrice <= Number(maxPrice);
+
+    return matchSearch && matchCategory && matchMin && matchMax;
+  }), [products, searchQuery, activeCat, minPrice, maxPrice]);
 
   const applyFilters = () => { setActiveCat(tempCategory); setMinPrice(tempMinPrice); setMaxPrice(tempMaxPrice); setFilterVis(false); };
   const clearFilters = () => { setTempCategory('All'); setTempMinPrice(''); setTempMaxPrice(''); setActiveCat('All'); setMinPrice(''); setMaxPrice(''); setFilterVis(false); };
@@ -103,7 +109,9 @@ export default function HomePage({ navigation }) {
       <Header user={user} cartItemCount={cartItems.length} onAvatarPress={() => user ? setProfVis(true) : setAuthVis(true)} onCartPress={() => setCartVis(true)} />
       <View style={styles.searchRow}>
         <Searchbar placeholder="Search products..." onChangeText={setSearchQuery} value={searchQuery} style={styles.searchBar} inputStyle={{minHeight: 0}} />
-        <IconButton icon="filter-variant" mode="contained" containerColor="#6F4E37" iconColor="#fff" size={24} onPress={() => setFilterVis(true)} />
+        <IconButton icon="filter-variant" mode="contained" containerColor="#6F4E37" iconColor="#fff" size={24} onPress={() => {
+          setTempCategory(activeCat); setTempMinPrice(minPrice); setTempMaxPrice(maxPrice); setFilterVis(true);
+        }} />
       </View>
       <Text variant="titleMedium" style={styles.secTitle}>Daily discounts</Text>
       <Card style={styles.banner}>
@@ -150,6 +158,7 @@ export default function HomePage({ navigation }) {
                <CardComponent item={item} isGuest={!user} onAddToCart={() => {setSelectedItem(item); setCustVis(true)}} onFavorite={() => handleFavorite(item)} isFavorite={favorites.includes(item._id)} />
             </TouchableOpacity>
           )} 
+          ListEmptyComponent={<Text style={{textAlign: 'center', marginTop: 30, color: '#888'}}>No products match your filters.</Text>}
         />
       )}
 
