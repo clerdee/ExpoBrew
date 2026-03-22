@@ -3,7 +3,6 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 require('dotenv').config();
 
-// Import our routes
 const authRoutes = require('./routes/authRoutes'); 
 const productRoutes = require('./routes/productRoutes');
 const userRoutes = require('./routes/userRoutes');
@@ -17,7 +16,6 @@ app.use(express.json());
 
 app.use(cors());
 
-// Middleware
 app.use(cors());
 app.use(express.json()); 
 

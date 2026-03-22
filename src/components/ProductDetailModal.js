@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Image, ActivityIndicator, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
-import { Text, IconButton, Divider, Card, TextInput, Button } from 'react-native-paper';
+import { Text, IconButton, Divider, Card, TextInput, Button, Avatar } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import axios from 'axios';
 import Toast from 'react-native-toast-message';
+import * as SecureStore from 'expo-secure-store';
 import { useDispatch, useSelector } from 'react-redux';
 import { API_BASE_URL } from '../configs/config';
 import { fetchMyReview, submitReview, clearReviewState } from '../redux/actions/reviewActions';
@@ -15,10 +16,13 @@ export default function ProductDetailModal({ route, navigation }) {
   const dispatch = useDispatch();
   
   const { currentReview, loading: reviewLoading, submitting } = useSelector((state) => state.reviewState);
+  const [currentUser, setCurrentUser] = useState(null);
   const [product, setProduct] = useState(null), [loading, setLoading] = useState(true);
   const [rating, setRating] = useState(5), [comment, setComment] = useState('');
 
   useEffect(() => {
+    SecureStore.getItemAsync('userInfo').then(u => { if(u) setCurrentUser(JSON.parse(u)); });
+    
     axios.get(`${API_BASE_URL}/products/${productId}`)
          .then(res => setProduct(res.data))
          .catch(e => console.log(e))
@@ -42,6 +46,8 @@ export default function ProductDetailModal({ route, navigation }) {
 
   const cust = orderItem?.customizations || {};
   const hasCustomizations = Object.values(cust).some(Boolean);
+  const formatCust = (c) => c && Object.values(c).filter(Boolean).length ? `Variation: ${Object.values(c).filter(Boolean).join(', ')}` : null;
+  const formatDate = (date) => new Date(date).toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
   if (loading && !product) return <View style={styles.center}><ActivityIndicator color="#6F4E37" size="large" /></View>;
 
@@ -70,6 +76,27 @@ export default function ProductDetailModal({ route, navigation }) {
 
         <Divider style={styles.div} />
 
+        {/* Display The User's Current Live Review Data if it exists */}
+        {currentReview?._id && (
+            <View>
+              <Text style={styles.secTitle}>Your Current Review</Text>
+              <Card style={styles.reviewCard}>
+                  <Card.Content style={styles.rRow}>
+                      <Avatar.Icon size={40} icon="account" style={styles.avatar} color="#FFF" />
+                      <View style={styles.rInfo}>
+                          <View style={styles.rowBetween}>
+                              <Text style={styles.rUser}>{currentUser?.name || 'Coffee Lover'}</Text>
+                              <Text style={styles.rDate}>{formatDate(currentReview.updatedAt || currentReview.createdAt)}</Text>
+                          </View>
+                          <View style={styles.stars}>{[1,2,3,4,5].map(s => <MaterialCommunityIcons key={s} name={s <= currentReview.rating ? 'star' : 'star-outline'} size={14} color="#F1C40F" />)}</View>
+                          {currentReview.customizations && <Text style={styles.variationTxt}>{formatCust(currentReview.customizations)}</Text>}
+                          <Text style={styles.rComment}>{currentReview.comment}</Text>
+                      </View>
+                  </Card.Content>
+              </Card>
+            </View>
+        )}
+
         <Card style={styles.reviewFormCard}>
           <Text style={styles.secTitle}>{currentReview?._id ? 'Update Your Rating' : 'Rate This Brew'}</Text>
           <View style={styles.starRow}>{STAR_OPTIONS.map(s => (<TouchableOpacity key={s} onPress={() => setRating(s)}><MaterialCommunityIcons name={s <= rating ? 'star' : 'star-outline'} size={38} color="#D4AF37" /></TouchableOpacity>))}</View>
@@ -94,5 +121,8 @@ const styles = StyleSheet.create({
   custTxt: { color: '#555', fontSize: 14, marginTop: 4 }, div: { marginVertical: 15, backgroundColor: '#EFEFEF', height: 1 },
   reviewFormCard: { padding: 15, backgroundColor: '#FFF', borderRadius: 12, marginBottom: 25, elevation: 2 },
   secTitle: { fontSize: 18, fontWeight: 'bold', color: '#4A3B32', marginBottom: 10 }, starRow: { flexDirection: 'row', gap: 10, marginVertical: 10, justifyContent: 'center' },
-  revInp: { backgroundColor: '#FFF', marginTop: 5, fontSize: 14 }, subBtn: { marginTop: 15, borderRadius: 10 }
+  revInp: { backgroundColor: '#FFF', marginTop: 5, fontSize: 14 }, subBtn: { marginTop: 15, borderRadius: 10 },
+  reviewCard: { backgroundColor: '#FFF', marginBottom: 25, borderRadius: 12, elevation: 1, borderWidth: 1, borderColor: '#6F4E37' }, rRow: { flexDirection: 'row', alignItems: 'flex-start' }, avatar: { backgroundColor: '#D2B48C', marginRight: 12, marginTop: 4 },
+  rInfo: { flex: 1 }, rUser: { fontWeight: 'bold', color: '#333', fontSize: 14 }, rDate: { fontSize: 11, color: '#AAA', marginTop: 2 }, stars: { flexDirection: 'row', marginVertical: 6 }, 
+  variationTxt: { fontSize: 11, color: '#888', fontStyle: 'italic', marginBottom: 4 }, rComment: { fontSize: 13, color: '#444', lineHeight: 18 }
 });

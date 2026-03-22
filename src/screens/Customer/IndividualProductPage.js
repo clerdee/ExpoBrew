@@ -5,6 +5,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import axios from 'axios';
 import Toast from 'react-native-toast-message';
 import * as SQLite from 'expo-sqlite';
+import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../configs/config';
 
 const SIZES = [{ l: 'Tall', p: 0 }, { l: 'Grande', p: 25 }, { l: 'Venti', p: 40 }];
@@ -18,17 +19,23 @@ const OPTIONS = {
 export default function IndividualProductPage({ route, navigation }) {
   const { product } = route.params;
   
+  const [currentUser, setCurrentUser] = useState(null);
   const [reviews, setReviews] = useState([]), [loadingReviews, setLoadingReviews] = useState(true);
   const [size, setSize] = useState('Tall'), [espresso, setEspresso] = useState('Regular');
   const [milk, setMilk] = useState('Whole Milk'), [syrups, setSyrups] = useState([]);
   const [extras, setExtras] = useState([]), [condiments, setCondiments] = useState([]);
 
   useEffect(() => {
-    axios.get(`${API_BASE_URL}/reviews/product/${product._id}`)
-         .then(res => setReviews(res.data))
-         .catch(e => console.log("Failed to fetch reviews:", e))
-         .finally(() => setLoadingReviews(false));
-  }, [product._id]);
+    SecureStore.getItemAsync('userInfo').then(u => { if(u) setCurrentUser(JSON.parse(u)); });
+    
+    // Auto-refresh reviews when gaining focus (in case they just edited it)
+    const unsubscribe = navigation.addListener('focus', () => {
+      setLoadingReviews(true);
+      axios.get(`${API_BASE_URL}/reviews/product/${product._id}`)
+           .then(res => setReviews(res.data)).catch(e => console.log(e)).finally(() => setLoadingReviews(false));
+    });
+    return unsubscribe;
+  }, [navigation, product._id]);
 
   const milkPrice = OPTIONS.milk.find(m => m.l === milk)?.p || 0;
   const totalPrice = (product.price || 0) + (SIZES.find(s => s.l === size)?.p || 0) + milkPrice + syrups.reduce((s, i) => s + i.p, 0) + extras.reduce((s, i) => s + i.p, 0);
@@ -56,8 +63,8 @@ export default function IndividualProductPage({ route, navigation }) {
   };
 
   const avgRating = reviews.length ? (reviews.reduce((a, r) => a + r.rating, 0) / reviews.length).toFixed(1) : 0;
-
   const formatCust = (c) => c && Object.values(c).filter(Boolean).length ? `Variation: ${Object.values(c).filter(Boolean).join(', ')}` : null;
+  const formatDate = (date) => new Date(date).toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
   return (
     <View style={styles.bg}>
@@ -133,11 +140,19 @@ export default function IndividualProductPage({ route, navigation }) {
                     <Avatar.Icon size={40} icon="account" style={styles.avatar} color="#FFF" />
                     <View style={styles.rInfo}>
                         <View style={styles.rowBetween}>
-                            <Text style={styles.rUser}>{r.user?.name || 'Coffee Lover'}</Text>
-                            <Text style={styles.rDate}>{new Date(r.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}</Text>
+                            <View>
+                                <Text style={styles.rUser}>{r.user?.name || 'Coffee Lover'}</Text>
+                                <Text style={styles.rDate}>{formatDate(r.createdAt)}</Text>
+                            </View>
+                            {/* EDIT BUTTON (Only visible if the current user owns the review) */}
+                            {currentUser?._id === (r.user?._id || r.user) && (
+                                <IconButton 
+                                  icon="pencil" size={18} iconColor="#6F4E37" style={{margin: 0}} 
+                                  onPress={() => navigation.navigate('ProductDetail', { productId: product._id, orderId: r.order, orderItem: { name: product.name, price: product.price, image: product.image, customizations: r.customizations } })} 
+                                />
+                            )}
                         </View>
                         <View style={styles.stars}>{[1,2,3,4,5].map(s => <MaterialCommunityIcons key={s} name={s <= r.rating ? 'star' : 'star-outline'} size={14} color="#F1C40F" />)}</View>
-                      
                         {r.customizations && <Text style={styles.variationTxt}>{formatCust(r.customizations)}</Text>}
                         <Text style={styles.rComment}>{r.comment}</Text>
                     </View>
@@ -158,7 +173,7 @@ export default function IndividualProductPage({ route, navigation }) {
 const styles = StyleSheet.create({
   bg: { flex: 1, backgroundColor: '#FAF5F0' }, head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 50, paddingBottom: 10, backgroundColor: '#FFF', elevation: 2 },
   hTitle: { fontSize: 18, fontWeight: 'bold', color: '#4A3B32' }, scroll: { padding: 20, paddingBottom: 100 },
-  img: { width: '100%', height: 220, borderRadius: 16, backgroundColor: '#EBE1D7', marginBottom: 15 }, infoWrap: { marginBottom: 15 }, rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  img: { width: '100%', height: 220, borderRadius: 16, backgroundColor: '#EBE1D7', marginBottom: 15 }, infoWrap: { marginBottom: 15 }, rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   name: { fontSize: 24, fontWeight: 'bold', color: '#4A3B32', flex: 1 }, price: { fontSize: 22, fontWeight: '900', color: '#6F4E37' }, ratingRow: { flexDirection: 'row', alignItems: 'center', marginTop: 5, marginBottom: 10 },
   ratingText: { fontSize: 14, color: '#555', marginLeft: 5, fontWeight: 'bold' }, desc: { fontSize: 14, color: '#666', lineHeight: 22 }, div: { marginVertical: 15, backgroundColor: '#EFEFEF', height: 2 },
   secTitle: { fontSize: 20, fontWeight: '900', color: '#4A3B32', marginBottom: 15 }, lbl: { fontSize: 14, fontWeight: 'bold', color: '#4A3B32', marginTop: 15, marginBottom: 10 },
@@ -169,8 +184,8 @@ const styles = StyleSheet.create({
   rTxt: { fontWeight: '500', color: '#777', marginLeft: 4 }, divMini: { marginVertical: 12, backgroundColor: '#F5F5F5' }, wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   pill: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 25, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#EEE' }, pillOn: { backgroundColor: '#6F4E37', borderColor: '#6F4E37' },
   pTxt: { color: '#444', fontSize: 12, fontWeight: '600' }, pTxtOn: { color: '#FFF' }, emptyWrap: { alignItems: 'center', marginVertical: 20, opacity: 0.7 }, empty: { fontSize: 14, color: '#888', marginTop: 10 },
-  reviewCard: { backgroundColor: '#FFF', marginBottom: 12, borderRadius: 12, elevation: 1 }, rRow: { flexDirection: 'row', alignItems: 'flex-start' }, avatar: { backgroundColor: '#D2B48C', marginRight: 12 },
-  rInfo: { flex: 1 }, rUser: { fontWeight: 'bold', color: '#333', fontSize: 14 }, rDate: { fontSize: 11, color: '#AAA' }, stars: { flexDirection: 'row', marginVertical: 4 }, 
+  reviewCard: { backgroundColor: '#FFF', marginBottom: 12, borderRadius: 12, elevation: 1 }, rRow: { flexDirection: 'row', alignItems: 'flex-start' }, avatar: { backgroundColor: '#D2B48C', marginRight: 12, marginTop: 4 },
+  rInfo: { flex: 1 }, rUser: { fontWeight: 'bold', color: '#333', fontSize: 14 }, rDate: { fontSize: 11, color: '#AAA', marginTop: 2 }, stars: { flexDirection: 'row', marginVertical: 6 }, 
   variationTxt: { fontSize: 11, color: '#888', fontStyle: 'italic', marginBottom: 4 }, rComment: { fontSize: 13, color: '#444', lineHeight: 18 },
   footer: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#FFF', padding: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderColor: '#EEE', elevation: 10 },
   fPrice: { fontSize: 24, fontWeight: 'bold', color: '#4A3B32' }, fSub: { fontSize: 11, color: '#AAA', fontWeight: 'bold', maxWidth: 150 }, btn: { borderRadius: 12, paddingHorizontal: 20, height: 45, justifyContent: 'center' }
