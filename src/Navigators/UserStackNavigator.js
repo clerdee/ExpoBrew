@@ -13,6 +13,7 @@ import PromoList from "../screens/Customer/PromoList";
 import PromoDetail from "../screens/Customer/PromoDetail";
 import PlaceOrderPage from "../screens/Customer/PlaceOrderPage";
 import OrderDetailPage from "../screens/Customer/OrderDetailPage";
+import ProductDetailModal from "../components/ProductDetailModal";
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -48,6 +49,7 @@ export default function UserStackNavigator() {
       <Stack.Screen name="PromoDetail" component={PromoDetail} />
       <Stack.Screen name="PlaceOrder" component={PlaceOrderPage} />
       <Stack.Screen name="OrderDetail" component={OrderDetailPage} />
+      <Stack.Screen name="ProductDetail" component={ProductDetailModal} />
     </Stack.Navigator>
   );
 }

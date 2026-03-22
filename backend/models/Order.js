@@ -3,9 +3,11 @@ const mongoose = require('mongoose');
 const orderSchema = new mongoose.Schema({
   user: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'User' },
   orderItems: [{
-    product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: false },
-    name: { type: String, required: true }, qty: { type: Number, required: true },
-    image: { type: String }, price: { type: Number, required: true },
+    product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
+    name: { type: String, required: true }, 
+    qty: { type: Number, required: true },
+    image: { type: String }, 
+    price: { type: Number, required: true },
     customizations: { type: Object }
   }],
   shippingAddress: { type: String, required: true },

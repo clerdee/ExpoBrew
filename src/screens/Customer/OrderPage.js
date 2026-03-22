@@ -35,7 +35,7 @@ export default function OrderPage({ navigation }) {
   useEffect(() => { if (error) Toast.show({ type: 'error', text1: 'Orders Error', text2: error }); }, [error]);
 
   const refreshOrders = async () => { setRefreshing(true); await dispatch(fetchOrders()); setRefreshing(false); };
-  const filtered = orders.filter(o => activeTab === 'Active' ? ['Pending', 'Preparing', 'Ready'].includes(o.status) : o.status === 'Completed');
+  const filtered = orders.filter(o => activeTab === 'Active' ? ['Pending', 'Preparing', 'Ready'].includes(o.status) : o.status === 'Completed' || o.status === 'Cancelled');
 
   const openReviewModal = async (order) => {
     const items = order.orderItems.filter(i => !!i.product);
@@ -61,11 +61,11 @@ export default function OrderPage({ navigation }) {
   };
 
   const renderOrder = ({ item: o }) => {
-    const config = { Pending: { color: '#F1C40F', icon: 'clock-outline' }, Preparing: { color: '#E67E22', icon: 'coffee-maker' }, Ready: { color: '#27AE60', icon: 'check-decagram' }, Completed: { color: '#6F4E37', icon: 'check-circle' } }[o.status] || { color: '#888', icon: 'help-circle' };
+    const config = { Pending: { color: '#F1C40F', icon: 'clock-outline' }, Preparing: { color: '#E67E22', icon: 'coffee-maker' }, Ready: { color: '#27AE60', icon: 'check-decagram' }, Completed: { color: '#6F4E37', icon: 'check-circle' }, Cancelled: { color: '#E74C3C', icon: 'cancel' } }[o.status] || { color: '#888', icon: 'help-circle' };
     const canRev = o.status === 'Completed' && o.orderItems.some(i => !!i.product);
 
     return (
-      <Card style={styles.card} mode="elevated">
+      <Card style={styles.card} mode="elevated" onPress={() => navigation.navigate('OrderDetail', { orderId: o._id })}>
         <Card.Content>
           <View style={styles.row}>
             <View><Text style={styles.id}>Order #{o._id.slice(-6).toUpperCase()}</Text><Text style={styles.date}>{new Date(o.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</Text></View>
@@ -76,9 +76,11 @@ export default function OrderPage({ navigation }) {
             <View style={styles.itemsWrap}><MaterialCommunityIcons name="shopping-outline" size={16} color="#888" /><Text numberOfLines={1} style={styles.items}>{o.orderItems.map(i => `${i.qty}x ${i.name}`).join(', ')}</Text></View>
             <Text style={styles.total}>₱{o.totalPrice.toFixed(2)}</Text>
           </View>
-          <Button mode={activeTab === 'Active' ? 'contained' : 'outlined'} style={styles.btn} buttonColor={activeTab === 'Active' ? '#6F4E37' : undefined} textColor={activeTab === 'History' ? '#6F4E37' : '#FFF'} onPress={() => activeTab === 'Active' ? navigation.navigate('OrderDetail', { orderId: o._id }) : openReviewModal(o)} disabled={activeTab === 'History' && !canRev}>
-            {activeTab === 'Active' ? 'Track Order' : canRev ? 'Review Items' : 'Review Unavailable'}
-          </Button>
+          {o.status !== 'Cancelled' && (
+            <Button mode={activeTab === 'Active' ? 'contained' : 'outlined'} style={styles.btn} buttonColor={activeTab === 'Active' ? '#6F4E37' : undefined} textColor={activeTab === 'History' ? '#6F4E37' : '#FFF'} onPress={() => activeTab === 'Active' ? navigation.navigate('OrderDetail', { orderId: o._id }) : openReviewModal(o)} disabled={activeTab === 'History' && !canRev}>
+              {activeTab === 'Active' ? 'Track Order' : canRev ? 'Rate Your Brew' : 'Review Unavailable'}
+            </Button>
+          )}
         </Card.Content>
       </Card>
     );
@@ -98,11 +100,11 @@ export default function OrderPage({ navigation }) {
         </>
       )}
       <Modal animationType="slide" transparent visible={reviewModalVis} onRequestClose={closeReviewModal}>
-        <View style={styles.overlay}><View style={styles.sheet}><View style={styles.sheetHeader}><Text style={styles.sheetTitle}>{currentReview?._id ? 'Update Review' : 'Leave a Review'}</Text><IconButton icon="close" onPress={closeReviewModal} /></View>
-            {selectedOrder && <ScrollView showsVerticalScrollIndicator={false}><Text style={styles.secT}>Select Item</Text><View style={styles.chipWrap}>{selectedOrder.orderItems.filter(i => !!i.product).map(i => (<Chip key={i.product} selected={selectedProduct?.product === i.product} onPress={() => handleSelectReviewItem(i)} style={[styles.chip, selectedProduct?.product === i.product && styles.chipOn]} textStyle={{color: selectedProduct?.product === i.product ? '#FFF' : '#555'}}>{i.name}</Chip>))}</View>
+        <View style={styles.overlay}><View style={styles.sheet}><View style={styles.sheetHeader}><Text style={styles.sheetTitle}>{currentReview?._id ? 'Update Review' : 'Rate Your Brew'}</Text><IconButton icon="close" onPress={closeReviewModal} /></View>
+            {selectedOrder && <ScrollView showsVerticalScrollIndicator={false}><Text style={styles.secT}>Select Drink</Text><View style={styles.chipWrap}>{selectedOrder.orderItems.filter(i => !!i.product).map(i => (<Chip key={i.product} selected={selectedProduct?.product === i.product} onPress={() => handleSelectReviewItem(i)} style={[styles.chip, selectedProduct?.product === i.product && styles.chipOn]} textStyle={{color: selectedProduct?.product === i.product ? '#FFF' : '#555'}}>{i.name}</Chip>))}</View>
                 <Text style={styles.secT}>Rating</Text><View style={styles.starRow}>{STAR_OPTIONS.map(s => (<TouchableOpacity key={s} onPress={() => setRating(s)}><MaterialCommunityIcons name={s <= rating ? 'star' : 'star-outline'} size={34} color="#D4AF37" /></TouchableOpacity>))}</View>
                 <TextInput mode="outlined" label="Review" value={comment} onChangeText={setComment} multiline numberOfLines={4} style={styles.revInp} activeOutlineColor="#6F4E37" />
-                {reviewLoading ? <ActivityIndicator color="#6F4E37" style={{ margin: 20 }} /> : <Button mode="contained" buttonColor="#6F4E37" onPress={handleSubmitReview} loading={submitting} style={styles.subBtn}>{currentReview?._id ? 'Update' : 'Submit'}</Button>}
+                {reviewLoading ? <ActivityIndicator color="#6F4E37" style={{ margin: 20 }} /> : <Button mode="contained" buttonColor="#6F4E37" onPress={handleSubmitReview} loading={submitting} style={styles.subBtn}>{currentReview?._id ? 'Update Rating' : 'Submit Rating'}</Button>}
             </ScrollView>}</View></View>
       </Modal>
     </View>

@@ -42,8 +42,18 @@ export default function PlaceOrderPage({ route, navigation }) {
     try {
       const token = await SecureStore.getItemAsync('userToken');
       const payload = {
-        orderItems: orderItems.map(i => ({ name: i.name, qty: i.qty, price: i.price, image: i.image, customizations: i.customizations || {} })),
-        shippingAddress, paymentMethod: mop, totalPrice: finalPrice, discountAmount: discount || 0
+        orderItems: orderItems.map(i => ({ 
+          product: i.product || i._id || i.id, 
+          name: i.name, 
+          qty: i.qty, 
+          price: i.price, 
+          image: i.image, 
+          customizations: i.customizations || {} 
+        })),
+        shippingAddress, 
+        paymentMethod: mop, 
+        totalPrice: finalPrice, 
+        discountAmount: discount || 0
       };
 
       await axios.post(`${API_BASE_URL}/orders`, payload, { headers: { Authorization: `Bearer ${token}` } });
