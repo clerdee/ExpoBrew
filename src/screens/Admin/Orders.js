@@ -129,8 +129,8 @@ export default function AdminOrders({ navigation }) {
             renderItem={renderItem} 
             contentContainerStyle={styles.list} 
             showsVerticalScrollIndicator={false} 
-            onRefresh={() => fetchOrders(true)} // Swipe to refresh logic
-            refreshing={refreshing} // Tied to our new state
+            onRefresh={() => fetchOrders(true)} 
+            refreshing={refreshing} 
             ListEmptyComponent={<View style={styles.empty}><MaterialCommunityIcons name="clipboard-text-off" size={60} color="#CCC" /><Text style={styles.emptyText}>No matching orders found.</Text></View>} 
           />
         )}
