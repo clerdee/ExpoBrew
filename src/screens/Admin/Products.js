@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { View, StyleSheet, FlatList, Image, ScrollView, RefreshControl, Dimensions, TouchableOpacity } from 'react-native';
-import { Text, Card, IconButton, ActivityIndicator, Chip, Searchbar, Surface } from 'react-native-paper';
+import { Text, IconButton, ActivityIndicator, Searchbar, Surface } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import axios from 'axios';
 import Toast from 'react-native-toast-message';
@@ -57,23 +57,25 @@ export default function Products({ navigation }) {
     const out = i.countInStock <= 0;
     return (
       <Surface style={styles.card} elevation={1}>
-        <View style={styles.imageWrapper}>
-          <Image source={{ uri: i.imageUrl || i.image || 'https://via.placeholder.com/150' }} style={styles.img} />
-          <View style={[styles.stockTag, { backgroundColor: out ? '#D32F2F' : '#388E3C' }]}>
-            <Text style={styles.stockText}>{out ? 'Out' : `${i.countInStock} Left`}</Text>
+        <View style={styles.cardInner}>
+          <View style={styles.imageWrapper}>
+            <Image source={{ uri: i.imageUrl || i.image || 'https://via.placeholder.com/150' }} style={styles.img} />
+            <View style={[styles.stockTag, { backgroundColor: out ? '#D32F2F' : '#388E3C' }]}>
+              <Text style={styles.stockText}>{out ? 'Out' : `${i.countInStock} Left`}</Text>
+            </View>
           </View>
-        </View>
-        <View style={styles.cardDetails}>
-          <Text style={styles.cardCat}>{i.category}</Text>
-          <Text style={styles.cardName} numberOfLines={1}>{i.name}</Text>
-          <Text style={styles.cardPrice}>₱{Number(i.price).toFixed(2)}</Text>
-          <View style={styles.actionRow}>
-            <TouchableOpacity onPress={() => openModal(i)} style={[styles.btn, styles.editBtn]}>
-              <MaterialCommunityIcons name="pencil" size={16} color="#6F4E37" />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => handleDelete(i._id)} style={[styles.btn, styles.delBtn]}>
-              <MaterialCommunityIcons name="trash-can" size={16} color="#D32F2F" />
-            </TouchableOpacity>
+          <View style={styles.cardDetails}>
+            <Text style={styles.cardCat}>{i.category}</Text>
+            <Text style={styles.cardName} numberOfLines={1}>{i.name}</Text>
+            <Text style={styles.cardPrice}>₱{Number(i.price).toFixed(2)}</Text>
+            <View style={styles.actionRow}>
+              <TouchableOpacity onPress={() => openModal(i)} style={[styles.btn, styles.editBtn]}>
+                <MaterialCommunityIcons name="pencil" size={16} color="#6F4E37" />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => handleDelete(i._id)} style={[styles.btn, styles.delBtn]}>
+                <MaterialCommunityIcons name="trash-can" size={16} color="#D32F2F" />
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Surface>
@@ -139,7 +141,8 @@ const styles = StyleSheet.create({
   divider: { width: 1, height: 20, backgroundColor: '#D3C4B7', marginRight: 8 },
   listWrapper: { flex: 1 }, list: { paddingHorizontal: 16, paddingBottom: 30 },
   columnWrapper: { justifyContent: 'space-between' },
-  card: { width: CARD_WIDTH, backgroundColor: '#FFF', borderRadius: 20, marginBottom: 16, overflow: 'hidden' },
+  card: { width: CARD_WIDTH, backgroundColor: '#FFF', borderRadius: 20, marginBottom: 16 },
+  cardInner: { borderRadius: 20, overflow: 'hidden' },
   imageWrapper: { width: '100%', height: 140 }, img: { width: '100%', height: '100%' },
   stockTag: { position: 'absolute', top: 10, right: 10, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
   stockText: { color: '#FFF', fontSize: 10, fontWeight: '900' },
