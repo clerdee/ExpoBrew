@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 require('dotenv').config();
 
+const User = require('./models/User');
 const authRoutes = require('./routes/authRoutes'); 
 const productRoutes = require('./routes/productRoutes');
 const userRoutes = require('./routes/userRoutes');
@@ -16,7 +17,12 @@ app.use(cors());
 app.use(express.json()); 
 
 mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log("✅ Connected to MongoDB"))
+  .then(async () => {
+    console.log("✅ Connected to MongoDB");
+    
+    await User.updateMany({}, { $set: { expoPushToken: null, expoPushTokens: [] } });
+    console.log("🧹 Cleared all old conflicting push tokens!");
+  })
   .catch((err) => console.log("❌ MongoDB connection error:", err));
 
 app.get('/', (req, res) => {
