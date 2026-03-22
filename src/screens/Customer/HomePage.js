@@ -7,7 +7,6 @@ import axios from 'axios';
 import { useFocusEffect } from '@react-navigation/native';
 import { useDispatch } from 'react-redux';
 import { API_BASE_URL } from '../../configs/config';
-import { fetchProducts } from '../../redux/actions/productActions';
 import CardComponent from '../../components/CardComponent';
 import CartModal from '../../components/CartModal';
 import AuthModal from '../../components/AuthModal';
@@ -32,13 +31,14 @@ export default function HomePage({ navigation }) {
   const [loading, setLoading] = useState(true), [activeCat, setActiveCat] = useState('All'), [currentSlide, setCurrentSlide] = useState(0);
   const [searchQuery, setSearchQuery] = useState(''), [minPrice, setMinPrice] = useState(''), [maxPrice, setMaxPrice] = useState('');
   const [filterVis, setFilterVis] = useState(false), [tempCategory, setTempCategory] = useState('All'), [tempMinPrice, setTempMinPrice] = useState(''), [tempMaxPrice, setTempMaxPrice] = useState('');
+
   const bannerRef = useRef(null);
 
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentSlide(prev => {
         const next = (prev + 1) % BANNERS.length;
-        bannerRef.current?.scrollToIndex({ index: next, animated: true });
+        if (bannerRef.current) bannerRef.current.scrollToIndex({ index: next, animated: true });
         return next;
       });
     }, 3000);
@@ -85,6 +85,10 @@ export default function HomePage({ navigation }) {
     setCustVis(false); setCartVis(true);
   };
 
+  const handleProductClick = (item) => {
+    navigation.navigate('IndividualProductPage', { product: item });
+  };
+
   const filtered = useMemo(() => products.filter(p => {
     const matchSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.description.toLowerCase().includes(searchQuery.toLowerCase());
     const matchCategory = activeCat === 'All' || p.category === activeCat;
@@ -103,7 +107,10 @@ export default function HomePage({ navigation }) {
       </View>
       <Text variant="titleMedium" style={styles.secTitle}>Daily discounts</Text>
       <Card style={styles.banner}>
-        <FlatList ref={bannerRef} data={BANNERS} horizontal pagingEnabled showsHorizontalScrollIndicator={false} keyExtractor={item => item.id.toString()}
+        <FlatList 
+          ref={bannerRef} data={BANNERS} horizontal pagingEnabled showsHorizontalScrollIndicator={false} keyExtractor={item => item.id.toString()}
+          getItemLayout={(data, index) => ({ length: BANNER_WIDTH, offset: BANNER_WIDTH * index, index })}
+          onScrollToIndexFailed={info => { const wait = new Promise(resolve => setTimeout(resolve, 500)); wait.then(() => { bannerRef.current?.scrollToIndex({ index: info.index, animated: true }); }); }}
           renderItem={({ item }) => (
             <View style={{ width: BANNER_WIDTH, height: 220 }}>
               <Image source={item.img} style={styles.bannerImg} />
@@ -139,7 +146,9 @@ export default function HomePage({ navigation }) {
       {loading ? <ActivityIndicator size="large" color="#6F4E37" style={{ flex: 1 }} /> : (
         <FlatList data={filtered} numColumns={2} columnWrapperStyle={styles.colWrap} ListHeaderComponent={renderHeader()} contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}
           keyExtractor={i => i._id} renderItem={({ item }) => (
-            <CardComponent item={item} isGuest={!user} onAddToCart={() => {setSelectedItem(item); setCustVis(true)}} onFavorite={() => handleFavorite(item)} isFavorite={favorites.includes(item._id)} />
+            <TouchableOpacity activeOpacity={0.9} onPress={() => handleProductClick(item)} style={{ flex: 1 }}>
+               <CardComponent item={item} isGuest={!user} onAddToCart={() => {setSelectedItem(item); setCustVis(true)}} onFavorite={() => handleFavorite(item)} isFavorite={favorites.includes(item._id)} />
+            </TouchableOpacity>
           )} 
         />
       )}
@@ -190,7 +199,7 @@ const styles = StyleSheet.create({
   bSub: { color: "#fff", fontSize: 14, marginBottom: 8, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: {width: 1, height: 1}, textShadowRadius: 4 }, 
   bBtn: { backgroundColor: "#fff", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, alignSelf: "flex-start", elevation: 3 },
   catScroll: { flexDirection: "row", marginBottom: 20 }, catPill: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 25, marginRight: 10, backgroundColor: "#fff", borderWidth: 1, borderColor: "#EFEFEF" },
-  catOn: { backgroundColor: "#6F4E37", borderColor: "#6F4E37" }, catText: { color: "#6F4E37", fontWeight: "600" }, catTextOn: { color: "#fff" }, colWrap: { justifyContent: "space-between" },
+  catOn: { backgroundColor: "#6F4E37", borderColor: "#6F4E37" }, catText: { color: "#6F4E37", fontWeight: "600" }, catTextOn: { color: "#fff" }, colWrap: { gap: 10, marginBottom: 10 },
   searchRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 15 },
   searchBar: { flex: 1, backgroundColor: '#fff', elevation: 2, height: 50 },
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
