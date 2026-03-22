@@ -114,23 +114,27 @@ export default function HomePage({ navigation }) {
         }} />
       </View>
       <Text variant="titleMedium" style={styles.secTitle}>Daily discounts</Text>
-      <Card style={styles.banner}>
-        <FlatList 
-          ref={bannerRef} data={BANNERS} horizontal pagingEnabled showsHorizontalScrollIndicator={false} keyExtractor={item => item.id.toString()}
-          getItemLayout={(data, index) => ({ length: BANNER_WIDTH, offset: BANNER_WIDTH * index, index })}
-          onScrollToIndexFailed={info => { const wait = new Promise(resolve => setTimeout(resolve, 500)); wait.then(() => { bannerRef.current?.scrollToIndex({ index: info.index, animated: true }); }); }}
-          renderItem={({ item }) => (
-            <View style={{ width: BANNER_WIDTH, height: 220 }}>
-              <Image source={item.img} style={styles.bannerImg} />
-              <View style={styles.bannerOver}>
-                <Text style={styles.bTitle}>{item.title}</Text>
-                <Text style={styles.bSub}>{item.sub}</Text>
-                <View style={styles.bBtn}><Text style={{fontWeight:"bold",fontSize:10,color:"#4A3B32"}}>ORDER NOW</Text></View>
+
+      <Card style={styles.bannerCard}>
+        <View style={styles.bannerInner}>
+          <FlatList 
+            ref={bannerRef} data={BANNERS} horizontal pagingEnabled showsHorizontalScrollIndicator={false} keyExtractor={item => item.id.toString()}
+            getItemLayout={(data, index) => ({ length: BANNER_WIDTH, offset: BANNER_WIDTH * index, index })}
+            onScrollToIndexFailed={info => { const wait = new Promise(resolve => setTimeout(resolve, 500)); wait.then(() => { bannerRef.current?.scrollToIndex({ index: info.index, animated: true }); }); }}
+            renderItem={({ item }) => (
+              <View style={{ width: BANNER_WIDTH, height: 220 }}>
+                <Image source={item.img} style={styles.bannerImg} />
+                <View style={styles.bannerOver}>
+                  <Text style={styles.bTitle}>{item.title}</Text>
+                  <Text style={styles.bSub}>{item.sub}</Text>
+                  <View style={styles.bBtn}><Text style={{fontWeight:"bold",fontSize:10,color:"#4A3B32"}}>ORDER NOW</Text></View>
+                </View>
               </View>
-            </View>
-          )}
-        />
+            )}
+          />
+        </View>
       </Card>
+
       <Text variant="titleMedium" style={styles.secTitle}>Categories</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.catScroll}>
         {CATEGORIES.map(c => (
@@ -201,7 +205,8 @@ export default function HomePage({ navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#FAF5F0", paddingTop: 50 }, list: { paddingHorizontal: 20, paddingBottom: 100 },
   secTitle: { fontWeight: "bold", color: "#4A3B32", marginBottom: 12, marginTop: 5 }, 
-  banner: { marginBottom: 25, borderRadius: 15, overflow: "hidden", height: 220, backgroundColor: '#EFEFEF' }, 
+  bannerCard: { marginBottom: 25, borderRadius: 15, elevation: 3, shadowColor: '#000', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.1, shadowRadius: 4, backgroundColor: '#EFEFEF' }, 
+  bannerInner: { borderRadius: 15, overflow: "hidden", height: 220 },
   bannerImg: { width: '100%', height: '100%', resizeMode: 'cover' }, 
   bannerOver: { position: "absolute", left: 20, top: 55, zIndex: 1 }, 
   bTitle: { color: "#fff", fontWeight: "900", fontSize: 24, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: {width: 1, height: 1}, textShadowRadius: 4 },
