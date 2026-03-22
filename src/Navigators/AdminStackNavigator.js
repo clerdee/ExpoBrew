@@ -10,6 +10,7 @@ import Products from "../screens/Admin/Products";
 import Users from '../screens/Admin/Users';
 import Orders from '../screens/Admin/Orders';
 import Promos from '../screens/Admin/Promos';
+import Reviews from '../screens/Admin/Reviews'; 
 import OrderDetail from '../components/admin/OrderDetail';
 
 const Drawer = createDrawerNavigator();
@@ -74,6 +75,7 @@ export default function AdminStackNavigator() {
       <Drawer.Screen name="Users" component={Users} options={{ drawerIcon: ({color}) => <MaterialCommunityIcons name="account-group" size={22} color={color} /> }} />
       <Drawer.Screen name="Orders" component={Orders} options={{ drawerIcon: ({color}) => <MaterialCommunityIcons name="clipboard-list" size={22} color={color} /> }} />
       <Drawer.Screen name="Promos" component={Promos} options={{ drawerIcon: ({color}) => <MaterialCommunityIcons name="ticket-percent" size={22} color={color} /> }} />
+      <Drawer.Screen name="Reviews" component={Reviews} options={{ drawerIcon: ({color}) => <MaterialCommunityIcons name="star-outline" size={22} color={color} /> }} />
       <Drawer.Screen name="Settings" component={Dashboard} options={{ drawerIcon: ({color}) => <MaterialCommunityIcons name="cog" size={22} color={color} /> }} />
 
       <Drawer.Screen name="OrderDetail" component={OrderDetail} options={{ drawerItemStyle: { display: 'none' } }} />

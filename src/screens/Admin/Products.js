@@ -1,124 +1,154 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { View, StyleSheet, FlatList, Image, ScrollView } from 'react-native';
-import { Text, Card, IconButton, ActivityIndicator, Chip, Searchbar } from 'react-native-paper';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { View, StyleSheet, FlatList, Image, ScrollView, RefreshControl, Dimensions, TouchableOpacity } from 'react-native';
+import { Text, Card, IconButton, ActivityIndicator, Chip, Searchbar, Surface } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import axios from 'axios';
 import Toast from 'react-native-toast-message';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../configs/config';
-import AddProduct from '../../components/admin/AddProduct'; 
+import AddProduct from '../../components/admin/AddProduct';
+
+const { width } = Dimensions.get('window');
+const CARD_WIDTH = (width - 48) / 2;
 
 const CATEGORIES = ['All', 'Brewed', 'Espresso', 'Frappuccino', 'Refreshers', 'Non-Coffee', 'Tea'];
 const STOCK_FILTERS = ['All', 'In Stock', 'Out of Stock'];
 
 export default function Products({ navigation }) {
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [catFilter, setCatFilter] = useState('All'); 
-  const [stockFilter, setStockFilter] = useState('All');
-  const [modal, setModal] = useState(false);
-  const [editing, setEditing] = useState(null);
+  const [products, setProducts] = useState([]), [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false), [search, setSearch] = useState('');
+  const [catFilter, setCatFilter] = useState('All'), [stockFilter, setStockFilter] = useState('All');
+  const [modal, setModal] = useState(false), [editing, setEditing] = useState(null);
 
-  useEffect(() => { fetchProducts(); }, []);
+  const fetchProducts = useCallback(async (isSilent = false) => {
+    if (!isSilent) isSilent === 'pull' ? setRefreshing(true) : setLoading(true);
+    try {
+      const { data } = await axios.get(`${API_BASE_URL}/products`);
+      setProducts(data);
+    } catch (e) {
+      Toast.show({ type: 'error', text1: 'Sync Failed', text2: 'Could not update inventory' });
+    } finally { setLoading(false); setRefreshing(false); }
+  }, []);
 
-  const fetchProducts = async () => {
-    setLoading(true);
-    try { setProducts((await axios.get(`${API_BASE_URL}/products`)).data); } 
-    catch (e) { Toast.show({ type: 'error', text1: 'Failed to load products' }); } 
-    finally { setLoading(false); }
-  };
+  useEffect(() => {
+    fetchProducts();
+    const interval = setInterval(() => fetchProducts(true), 10000);
+    return () => clearInterval(interval);
+  }, [fetchProducts]);
 
   const handleDelete = async (id) => {
-    try { 
-      await axios.delete(`${API_BASE_URL}/products/${id}`, { headers: { Authorization: `Bearer ${await SecureStore.getItemAsync('userToken')}` } }); 
-      Toast.show({ type: 'success', text1: 'Coffee deleted' }); fetchProducts(); 
-    } catch (e) { Toast.show({ type: 'error', text1: 'Failed to delete coffee' }); }
+    try {
+      const token = await SecureStore.getItemAsync('userToken');
+      await axios.delete(`${API_BASE_URL}/products/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+      Toast.show({ type: 'success', text1: 'Deleted', text2: 'Product removed from inventory' });
+      fetchProducts(true);
+    } catch (e) { Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to delete coffee' }); }
   };
 
   const openModal = (prod = null) => { setEditing(prod); setModal(true); };
 
-  const filtered = useMemo(() => products.filter(i => 
-    i.name.toLowerCase().includes(search.toLowerCase()) && 
-    (catFilter === 'All' || i.category === catFilter) && 
+  const filtered = useMemo(() => products.filter(i =>
+    i.name.toLowerCase().includes(search.toLowerCase()) &&
+    (catFilter === 'All' || i.category === catFilter) &&
     (stockFilter === 'All' || (stockFilter === 'In Stock' ? i.countInStock > 0 : i.countInStock <= 0))
   ), [products, search, catFilter, stockFilter]);
 
   const renderItem = ({ item: i }) => {
     const out = i.countInStock <= 0;
     return (
-      <Card style={styles.card} mode="elevated">
-        <View style={styles.cardContent}>
-          <Image source={{ uri: i.imageUrl || i.image || 'https://via.placeholder.com/100?text=No' }} style={styles.img} />
-          <View style={styles.info}>
-            <View style={styles.titleRow}>
-              <Text style={styles.name} numberOfLines={2}>{i.name}</Text>
-              <Text style={styles.price}>₱{Number(i.price).toFixed(2)}</Text>
-            </View>
-            <Text style={styles.cat}>{i.category || 'Uncategorized'}</Text>
-            {i.description && <Text style={styles.desc} numberOfLines={2}>{i.description}</Text>}
-            <Chip icon={out?"close-circle":"check-circle"} textStyle={{fontSize: 12, fontWeight: 'bold', color: '#FFF'}} style={[styles.badge, {backgroundColor: out?'#D32F2F':'#388E3C'}]} compact>
-              {out ? 'Out of Stock' : `${i.countInStock} In Stock`}
-            </Chip>
-          </View>
-          <View style={styles.actions}>
-            <IconButton icon="pencil-outline" size={20} iconColor="#4A2E1B" containerColor="#F5F5F5" onPress={() => openModal(i)} style={styles.actionBtn} />
-            <IconButton icon="trash-can-outline" size={20} iconColor="#D32F2F" containerColor="#FEEBEE" onPress={() => handleDelete(i._id)} style={styles.actionBtn} />
+      <Surface style={styles.card} elevation={1}>
+        <View style={styles.imageWrapper}>
+          <Image source={{ uri: i.imageUrl || i.image || 'https://via.placeholder.com/150' }} style={styles.img} />
+          <View style={[styles.stockTag, { backgroundColor: out ? '#D32F2F' : '#388E3C' }]}>
+            <Text style={styles.stockText}>{out ? 'Out' : `${i.countInStock} Left`}</Text>
           </View>
         </View>
-      </Card>
+        <View style={styles.cardDetails}>
+          <Text style={styles.cardCat}>{i.category}</Text>
+          <Text style={styles.cardName} numberOfLines={1}>{i.name}</Text>
+          <Text style={styles.cardPrice}>₱{Number(i.price).toFixed(2)}</Text>
+          <View style={styles.actionRow}>
+            <TouchableOpacity onPress={() => openModal(i)} style={[styles.btn, styles.editBtn]}>
+              <MaterialCommunityIcons name="pencil" size={16} color="#6F4E37" />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => handleDelete(i._id)} style={[styles.btn, styles.delBtn]}>
+              <MaterialCommunityIcons name="trash-can" size={16} color="#D32F2F" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Surface>
     );
   };
 
   return (
     <View style={styles.container}>
-      <View style={styles.top}>
-        <View style={styles.header}>
-          <View style={styles.headerRow}>
-            <IconButton icon="menu" size={28} iconColor="#FFF" onPress={() => navigation.openDrawer()} style={{ marginLeft: -10 }} />
-            <Text style={styles.title}>Inventory</Text>
-            <IconButton icon="plus-box" size={28} iconColor="#FFF" onPress={() => openModal()} style={{ marginRight: -10 }} />
-          </View>
+      <View style={styles.headerSection}>
+        <View style={styles.navRow}>
+          <IconButton icon="menu" size={28} iconColor="#FFF" onPress={() => navigation.openDrawer()} />
+          <Text style={styles.headerTitle}>Inventory</Text>
+          <IconButton icon="plus-circle" size={28} iconColor="#FFF" onPress={() => openModal()} />
         </View>
-        <View style={styles.searchRow}>
-          <Searchbar placeholder="Search coffees..." onChangeText={setSearch} value={search} style={styles.searchBar} inputStyle={{ fontSize: 15 }} iconColor="#4A2E1B" elevation={2} />
-        </View>
-        <View style={styles.filters}>
-          <Text style={styles.filterTitle}>Availability</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scroll}>
-            {STOCK_FILTERS.map(f => <Chip key={f} mode="flat" onPress={()=>setStockFilter(f)} style={[styles.chip, stockFilter===f?styles.chipOn:styles.chipOff]} textStyle={stockFilter===f?styles.textOn:styles.textOff}>{f}</Chip>)}
-          </ScrollView>
-          <Text style={styles.filterTitle}>Categories</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scroll}>
-            {CATEGORIES.map(f => <Chip key={f} mode="flat" onPress={()=>setCatFilter(f)} style={[styles.chip, catFilter===f?styles.chipOn:styles.chipOff]} textStyle={catFilter===f?styles.textOn:styles.textOff}>{f}</Chip>)}
-          </ScrollView>
+        <View style={styles.searchWrapper}>
+          <Searchbar placeholder="Search products..." onChangeText={setSearch} value={search} style={styles.searchBar} inputStyle={styles.searchInput} iconColor="#6F4E37" elevation={0} />
         </View>
       </View>
-      <View style={styles.bottom}>
-        {loading ? <ActivityIndicator size="large" color="#4A2E1B" style={styles.loader} /> : (
-          <FlatList data={filtered} keyExtractor={i => i._id.toString()} renderItem={renderItem} contentContainerStyle={styles.list} showsVerticalScrollIndicator={false} ListEmptyComponent={
-            <View style={styles.empty}><MaterialCommunityIcons name="coffee-off" size={60} color="#CCC" /><Text style={styles.emptyText}>No matching coffees found.</Text></View>
-          } />
+
+      <View style={styles.filterSection}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
+          {STOCK_FILTERS.map(f => (
+            <TouchableOpacity key={f} onPress={() => setStockFilter(f)} style={[styles.filterPill, stockFilter === f && styles.filterPillOn]}>
+              <Text style={[styles.filterText, stockFilter === f && styles.filterTextOn]}>{f}</Text>
+            </TouchableOpacity>
+          ))}
+          <View style={styles.divider} />
+          {CATEGORIES.map(f => (
+            <TouchableOpacity key={f} onPress={() => setCatFilter(f)} style={[styles.filterPill, catFilter === f && styles.filterPillOn]}>
+              <Text style={[styles.filterText, catFilter === f && styles.filterTextOn]}>{f}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+
+      <View style={styles.listWrapper}>
+        {loading ? <ActivityIndicator size="large" color="#6F4E37" style={{flex:1}} /> : (
+          <FlatList
+            data={filtered} numColumns={2} keyExtractor={i => i._id.toString()} renderItem={renderItem}
+            contentContainerStyle={styles.list} columnWrapperStyle={styles.columnWrapper}
+            showsVerticalScrollIndicator={false}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchProducts('pull')} tintColor="#6F4E37" />}
+            ListEmptyComponent={<View style={styles.empty}><MaterialCommunityIcons name="coffee-off" size={64} color="#D3C4B7" /><Text style={styles.emptyText}>No products found</Text></View>}
+          />
         )}
       </View>
-      <AddProduct visible={modal} onClose={() => setModal(false)} product={editing} onSuccess={fetchProducts} />
+      <AddProduct visible={modal} onClose={() => setModal(false)} product={editing} onSuccess={() => fetchProducts(true)} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAFAFA' }, top: { zIndex: 999, elevation: 999 }, bottom: { flex: 1, zIndex: 1, elevation: 1 },
-  header: { backgroundColor: '#4A2E1B', paddingHorizontal: 20, paddingTop: 50, paddingBottom: 40, borderBottomRightRadius: 25, borderBottomLeftRadius: 25 },
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, title: { fontSize: 22, fontWeight: '800', color: '#FFF' },
-  searchRow: { flexDirection: 'row', alignItems: 'center', marginTop: -25, paddingHorizontal: 20 }, searchBar: { flex: 1, backgroundColor: '#FFF', borderRadius: 12, height: 50 },
-  filters: { paddingHorizontal: 20, marginTop: 15, marginBottom: 5 }, filterTitle: { fontSize: 12, fontWeight: '700', color: '#A0A0A0', textTransform: 'uppercase', marginBottom: 6 },
-  scroll: { marginBottom: 12 }, chip: { marginRight: 8, borderRadius: 20, paddingHorizontal: 4, height: 34, justifyContent: 'center' },
-  chipOn: { backgroundColor: '#4A2E1B' }, chipOff: { backgroundColor: '#EAEAEA' }, textOn: { color: '#FFF', fontWeight: 'bold', fontSize: 13 }, textOff: { color: '#666', fontWeight: '600', fontSize: 13 },
-  loader: { flex: 1, justifyContent: 'center' }, list: { paddingHorizontal: 20, paddingBottom: 20, paddingTop: 5 }, card: { marginBottom: 14, backgroundColor: '#FFF', borderRadius: 15 },
-  cardContent: { flexDirection: 'row', padding: 12 }, img: { width: 100, height: 100, borderRadius: 10, backgroundColor: '#E0E0E0', marginTop: 4 },
-  info: { flex: 1, marginLeft: 15, justifyContent: 'flex-start' }, titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 2 }, 
-  name: { fontSize: 16, fontWeight: 'bold', color: '#333', flex: 1, marginRight: 8, lineHeight: 20 }, price: { fontSize: 16, color: '#6F4E37', fontWeight: '800' }, 
-  cat: { fontSize: 12, color: '#888', fontStyle: 'italic', marginBottom: 4 }, desc: { fontSize: 13, color: '#444', marginBottom: 10, lineHeight: 18 },
-  badge: { alignSelf: 'flex-start', marginTop: 'auto', paddingHorizontal: 4 }, actions: { flexDirection: 'column', justifyContent: 'space-around', marginLeft: 8 }, actionBtn: { margin: 0 },
-  empty: { alignItems: 'center', marginTop: 60 }, emptyText: { color: '#888', fontSize: 16, marginTop: 10, fontWeight: '500' }
+  container: { flex: 1, backgroundColor: '#FAF5F0' },
+  headerSection: { backgroundColor: '#4A2E1B', paddingBottom: 20, borderBottomLeftRadius: 30, borderBottomRightRadius: 30 },
+  navRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 50, paddingHorizontal: 10 },
+  headerTitle: { fontSize: 22, fontWeight: '900', color: '#FFF' },
+  searchWrapper: { paddingHorizontal: 20, marginTop: 10 },
+  searchBar: { height: 45, borderRadius: 12, backgroundColor: '#FFF' }, searchInput: { fontSize: 14 },
+  filterSection: { marginTop: 15, marginBottom: 5 }, filterScroll: { paddingHorizontal: 16, alignItems: 'center' },
+  filterPill: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: '#FFF', marginRight: 8, borderWidth: 1, borderColor: '#EBE1D7' },
+  filterPillOn: { backgroundColor: '#6F4E37', borderColor: '#6F4E37' },
+  filterText: { fontSize: 12, color: '#6F4E37', fontWeight: 'bold' }, filterTextOn: { color: '#FFF' },
+  divider: { width: 1, height: 20, backgroundColor: '#D3C4B7', marginRight: 8 },
+  listWrapper: { flex: 1 }, list: { paddingHorizontal: 16, paddingBottom: 30 },
+  columnWrapper: { justifyContent: 'space-between' },
+  card: { width: CARD_WIDTH, backgroundColor: '#FFF', borderRadius: 20, marginBottom: 16, overflow: 'hidden' },
+  imageWrapper: { width: '100%', height: 140 }, img: { width: '100%', height: '100%' },
+  stockTag: { position: 'absolute', top: 10, right: 10, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  stockText: { color: '#FFF', fontSize: 10, fontWeight: '900' },
+  cardDetails: { padding: 12 },
+  cardCat: { fontSize: 10, color: '#8B5E3C', textTransform: 'uppercase', fontWeight: '800' },
+  cardName: { fontSize: 15, fontWeight: 'bold', color: '#333', marginVertical: 2 },
+  cardPrice: { fontSize: 16, color: '#6F4E37', fontWeight: '900' },
+  actionRow: { flexDirection: 'row', marginTop: 10, justifyContent: 'space-between' },
+  btn: { flex: 0.48, height: 35, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+  editBtn: { backgroundColor: '#FAF5F0' }, delBtn: { backgroundColor: '#FEEBEE' },
+  empty: { flex: 1, alignItems: 'center', marginTop: 100 }, emptyText: { color: '#D3C4B7', fontSize: 16, marginTop: 10, fontWeight: 'bold' }
 });
