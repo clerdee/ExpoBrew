@@ -29,21 +29,7 @@
     },
     "plugins": [
       "expo-secure-store",
-      "expo-sqlite",
-      [
-        "react-native-fbsdk-next",
-        {
-          "appID": "942391915320130",
-          "clientToken": "1a3899954d3c63ed40c07e6c0967c400",
-          "displayName": "ExpoBrew",
-          "scheme": "fbY942391915320130"
-        }
-      ]
-    ],
-    "extra": {
-      "eas": {
-        "projectId": "e0d6bbf7-86e8-4023-b58d-05192f08ef0e"
-      }
-    }
+      "expo-sqlite"
+    ]
   }
 }
