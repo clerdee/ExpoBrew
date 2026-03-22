@@ -21,8 +21,11 @@ const clearStaleTokens = async (tokens = []) => {
 
   try {
     await User.updateMany(
-      { expoPushToken: { $in: uniqueTokens } },
-      { $set: { expoPushToken: null } }
+      { $or: [{ expoPushToken: { $in: uniqueTokens } }, { expoPushTokens: { $in: uniqueTokens } }] },
+      {
+        $pull: { expoPushTokens: { $in: uniqueTokens } },
+        $set: { expoPushToken: null },
+      }
     );
     console.log(`Cleared ${uniqueTokens.length} stale Expo push token(s).`);
   } catch (error) {

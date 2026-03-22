@@ -12,7 +12,7 @@ import UserStackNavigator from './src/Navigators/UserStackNavigator';
 import AuthStackNavigator from './src/Navigators/AuthStackNavigator';
 import AdminStackNavigator from './src/Navigators/AdminStackNavigator';
 import store from './src/redux/store';
-import { syncPushTokenToBackend } from './src/utils/notifications';
+import { clearPushTokenFromBackend, syncPushTokenToBackend } from './src/utils/notifications';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -73,6 +73,10 @@ export default function App() {
           }
         } else {
           setInitialRoute('Auth');
+          const clearedPushToken = await clearPushTokenFromBackend(null);
+          if (clearedPushToken.error) {
+            console.log('Push cleanup skipped:', clearedPushToken.error);
+          }
         }
 
         const initialResponse = await Notifications.getLastNotificationResponseAsync();

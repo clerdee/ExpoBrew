@@ -8,6 +8,9 @@ const { width } = Dimensions.get("window");
 
 export default function CardComponent({ item, onAddToCart, onFavorite, isFavorite, isGuest }) {
   const handleFavoritePress = () => {
+    if (isGuest) {
+      return Toast.show({ type: 'info', text1: 'Login Required', text2: 'Please log in or register to save favorites.' });
+    }
     if (onFavorite) {
       onFavorite(item); 
       if (!isGuest) {

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
+  Linking,
   Modal,
   Platform,
   ScrollView,
@@ -79,6 +80,21 @@ const RegisterPage = ({ navigation }) => {
       { text: 'Choose from Gallery', onPress: pickFromGallery },
       { text: 'Cancel', style: 'cancel' },
     ]);
+  };
+
+
+  const handleSocialLoginPress = async (provider) => {
+    Toast.show({
+      type: 'info',
+      text1: `${provider} login needs provider setup`,
+      text2: 'Use email/password for grading unless OAuth client keys are added.',
+    });
+
+    try {
+      await Linking.openURL('https://developers.google.com/identity');
+    } catch (error) {
+      console.log(`${provider} setup link error:`, error.message);
+    }
   };
 
   const handleRegister = async () => {
@@ -301,11 +317,11 @@ const RegisterPage = ({ navigation }) => {
           </View>
 
           <View style={styles.socialContainer}>
-            <TouchableOpacity style={styles.socialBtn} activeOpacity={0.8}>
+            <TouchableOpacity style={styles.socialBtn} activeOpacity={0.8} onPress={() => handleSocialLoginPress('Google')}>
               <MaterialCommunityIcons name="google" size={24} color="#DB4437" />
               <Text style={styles.socialText}>Google</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.socialBtn} activeOpacity={0.8}>
+            <TouchableOpacity style={styles.socialBtn} activeOpacity={0.8} onPress={() => handleSocialLoginPress('Facebook')}>
               <MaterialCommunityIcons name="facebook" size={24} color="#4267B2" />
               <Text style={styles.socialText}>Facebook</Text>
             </TouchableOpacity>

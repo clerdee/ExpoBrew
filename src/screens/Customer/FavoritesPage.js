@@ -4,10 +4,10 @@ import { Text, Card, IconButton, Searchbar, Button, Badge, Surface } from 'react
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import axios from 'axios';
 import * as SecureStore from "expo-secure-store";
-import * as SQLite from 'expo-sqlite';
 import { useFocusEffect } from '@react-navigation/native';
 import Toast from 'react-native-toast-message'; 
 import { API_BASE_URL } from '../../configs/config';
+import { loadCartItems, saveCartItems } from '../../utils/cartStorage';
 
 import CartModal from "../../components/CartModal";
 import CustomizeDrinkModal from "../../components/CustomizeDrinkModal";
@@ -23,9 +23,8 @@ const FavoritesPage = ({ navigation }) => {
       setLoading(true);
       const token = await SecureStore.getItemAsync("userToken");
       
-      const db = await SQLite.openDatabaseAsync('coffeecart.db');
-      const saved = await db.getFirstAsync('SELECT cart_data FROM cart_table WHERE id = 1;');
-      if (saved?.cart_data) setCartItems(JSON.parse(saved.cart_data));
+      const savedCart = await loadCartItems();
+      setCartItems(savedCart);
 
       if (!token) {
         setIsGuest(true);
@@ -37,7 +36,7 @@ const FavoritesPage = ({ navigation }) => {
       const res = await axios.get(`${API_BASE_URL}/users/favorites`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setFavorites(res.data);
+      setFavorites((res.data || []).filter(Boolean));
     } catch (e) { 
       Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to load favorites.' });
     } finally { setLoading(false); }
@@ -48,8 +47,7 @@ const FavoritesPage = ({ navigation }) => {
   useEffect(() => {
     (async () => {
       if (!loading) {
-        const db = await SQLite.openDatabaseAsync('coffeecart.db');
-        await db.runAsync('INSERT OR REPLACE INTO cart_table (id, cart_data) VALUES (1, ?);', JSON.stringify(cartItems));
+        await saveCartItems(cartItems);
       }
     })();
   }, [cartItems]);
@@ -67,9 +65,20 @@ const FavoritesPage = ({ navigation }) => {
     }
   };
 
-  const onAddClick = (item) => { setSelectedItem(item); setCustVis(true); };
+  const onAddClick = (item) => {
+    if (isGuest) {
+      return Toast.show({ type: 'info', text1: 'Login Required', text2: 'Please log in or register to add items to your cart.' });
+    }
+
+    setSelectedItem(item);
+    setCustVis(true);
+  };
 
   const onConfirmCust = (cust) => {
+    if (isGuest) {
+      setCustVis(false);
+      return Toast.show({ type: 'info', text1: 'Login Required', text2: 'Please log in or register to add items to your cart.' });
+    }
     setCartItems(prev => [...prev, { ...cust, qty: 1, cartId: Date.now().toString() }]);
     setCustVis(false); setCartVis(true);
     Toast.show({ type: 'success', text1: 'Added to Cart', text2: `${cust.name} is ready for checkout!` });

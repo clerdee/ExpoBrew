@@ -2,11 +2,12 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { View, StyleSheet, FlatList, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Dimensions, Image, Modal, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard } from 'react-native';
 import { Text, Card, IconButton, Searchbar, TextInput, Button, Chip } from 'react-native-paper';
 import * as SecureStore from 'expo-secure-store';
-import * as SQLite from 'expo-sqlite';
 import axios from 'axios';
+import Toast from 'react-native-toast-message';
 import { useFocusEffect } from '@react-navigation/native';
 import { useDispatch } from 'react-redux';
 import { API_BASE_URL } from '../../configs/config';
+import { loadCartItems, saveCartItems } from '../../utils/cartStorage';
 import CardComponent from '../../components/CardComponent';
 import CartModal from '../../components/CartModal';
 import AuthModal from '../../components/AuthModal';
@@ -49,11 +50,9 @@ export default function HomePage({ navigation }) {
     try {
       setLoading(true);
       try {
-        const db = await SQLite.openDatabaseAsync('coffeecart.db');
-        await db.execAsync(`CREATE TABLE IF NOT EXISTS cart_table (id INTEGER PRIMARY KEY NOT NULL, cart_data TEXT);`);
-        const saved = await db.getFirstAsync(`SELECT cart_data FROM cart_table WHERE id = 1;`);
-        if (saved && saved.cart_data) setCartItems(JSON.parse(saved.cart_data));
-      } catch (dbError) { console.log("SQLite Load Error:", dbError); }
+        const savedCart = await loadCartItems();
+        setCartItems(savedCart);
+      } catch (dbError) { console.log('SQLite Load Error:', dbError); }
 
       const uStr = await SecureStore.getItemAsync("userInfo"), token = await SecureStore.getItemAsync("userToken");
       if (uStr) setUser(JSON.parse(uStr));
@@ -62,7 +61,7 @@ export default function HomePage({ navigation }) {
         axios.get(`${API_BASE_URL}/products`, { params: { search: searchQuery.trim() || undefined, category: activeCat !== 'All' ? activeCat : undefined, minPrice: minPrice || undefined, maxPrice: maxPrice || undefined }}),
         token ? axios.get(`${API_BASE_URL}/users/favorites`, { headers: { Authorization: `Bearer ${token}` } }) : { data: [] }
       ]);
-      setProducts(pRes.data); setFavorites(fRes.data.map(f => f._id));
+      setProducts(pRes.data); setFavorites((fRes.data || []).filter(Boolean).map(f => String(f._id))); 
     } catch (e) { console.error(e); } finally { setLoading(false); }
   };
 
@@ -72,9 +71,8 @@ export default function HomePage({ navigation }) {
     (async () => { 
       if (!loading) {
         try {
-          const db = await SQLite.openDatabaseAsync('coffeecart.db');
-          await db.runAsync(`INSERT OR REPLACE INTO cart_table (id, cart_data) VALUES (1, ?);`, [JSON.stringify(cartItems)]);
-        } catch (dbError) { console.log("SQLite Save Error:", dbError); }
+          await saveCartItems(cartItems);
+        } catch (dbError) { console.log('SQLite Save Error:', dbError); }
       }
     })();
   }, [cartItems, loading]);
@@ -84,11 +82,18 @@ export default function HomePage({ navigation }) {
       const token = await SecureStore.getItemAsync("userToken");
       if (!token) return setAuthVis(true);
       const res = await axios.post(`${API_BASE_URL}/users/favorites/${p._id}`, {}, { headers: { Authorization: `Bearer ${token}` } });
-      setFavorites(res.data.favorites);
+      setFavorites((res.data.favorites || []).map((id) => String(id)));
+
     } catch (e) { Alert.alert('Error', 'Could not update favorites'); }
   };
 
   const confirmCustomization = (cust) => {
+    if (!user) {
+      setCustVis(false);
+      setAuthVis(true);
+      return Toast.show({ type: 'info', text1: 'Login Required', text2: 'Please log in or register to add items to your cart.' });
+    }
+
     setCartItems(prev => [...prev, { ...cust, qty: 1, cartId: Date.now().toString() + Math.random().toString(36).substr(2, 5) }]);
     setCustVis(false); setCartVis(true);
   };
@@ -149,7 +154,7 @@ export default function HomePage({ navigation }) {
         <FlatList data={filtered} numColumns={2} columnWrapperStyle={styles.colWrap} ListHeaderComponent={renderHeader()} contentContainerStyle={styles.list} showsVerticalScrollIndicator={false} keyExtractor={i => i._id}
           renderItem={({ item }) => (
             <TouchableOpacity activeOpacity={0.9} onPress={() => handleProductClick(item)} style={{ flex: 1 }}>
-               <CardComponent item={item} isGuest={!user} onAddToCart={() => {setSelectedItem(item); setCustVis(true)}} onFavorite={() => handleFavorite(item)} isFavorite={favorites.includes(item._id)} />
+               <CardComponent item={item} isGuest={!user} onAddToCart={() => { if (!user) { setAuthVis(true); return Toast.show({ type: 'info', text1: 'Login Required', text2: 'Please log in or register to add items to your cart.' }); } setSelectedItem(item); setCustVis(true); }} onFavorite={() => handleFavorite(item)} isFavorite={favorites.includes(item._id)} />
             </TouchableOpacity>
           )} 
           ListEmptyComponent={<Text style={{textAlign: 'center', marginTop: 30, color: '#888'}}>No products match your filters.</Text>} />

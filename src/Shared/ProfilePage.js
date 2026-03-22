@@ -20,14 +20,33 @@ export default function ProfilePage({ navigation }) {
   useEffect(() => {
     (async () => {
       try {
-        const token = await SecureStore.getItemAsync('userToken'), userStr = await SecureStore.getItemAsync('userInfo');
+        const token = await SecureStore.getItemAsync('userToken');
+        const userStr = await SecureStore.getItemAsync('userInfo');
         if (!token || !userStr) return setIsGuest(true);
+
         setIsGuest(false);
-        const u = JSON.parse(userStr);
-        const init = { name: u.name||'', email: u.email||'', profileImage: u.profileImage||null, phone: u.phone||'', birthday: u.birthday||'', addresses: u.addresses?.length ? u.addresses : [''] };
-        setOrig(init); setName(init.name); setEmail(init.email); setProfileImage(init.profileImage);
-        setPhone(init.phone); setBirthday(init.birthday); setAddresses([...init.addresses]);
-      } catch (e) { console.error('Error loading profile:', e); }
+        const { data } = await axios.get(`${API_BASE_URL}/users/profile`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        await SecureStore.setItemAsync('userInfo', JSON.stringify(data));
+
+        const init = {
+          name: data.name || '',
+          email: data.email || '',
+          profileImage: data.profileImage || null,
+          phone: data.phone || '',
+          birthday: data.birthday || '',
+          addresses: data.addresses?.length ? data.addresses : [''],
+        };
+
+        setOrig(init);
+        setName(init.name);
+        setEmail(init.email);
+        setProfileImage(init.profileImage);
+        setPhone(init.phone);
+        setBirthday(init.birthday);
+        setAddresses([...init.addresses]);
+      } catch (e) { console.error('Error loading profile:', e.response?.data || e.message); }
     })();
   }, []);
 
@@ -75,11 +94,13 @@ export default function ProfilePage({ navigation }) {
       }
 
       const res = await axios.put(`${API_BASE_URL}/users/profile`, formData, {
-        headers: { Authorization: `Bearer ${token}` } 
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' } 
       });
 
       await SecureStore.setItemAsync('userInfo', JSON.stringify(res.data));
-      setOrig({ name, email, profileImage: res.data.profileImage || profileImage, phone, birthday, addresses: res.data.addresses?.length ? res.data.addresses : [''] });
+      const nextProfileImage = res.data.profileImage || profileImage;
+      setOrig({ name, email, profileImage: nextProfileImage, phone, birthday, addresses: res.data.addresses?.length ? res.data.addresses : [''] });
+      setProfileImage(nextProfileImage);
       setCurrentPassword(""); setNewPassword("");
       Toast.show({ type: "success", text1: "Profile Updated!", text2: "Your changes have been saved." });
     } catch (e) { 

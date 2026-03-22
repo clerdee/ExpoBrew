@@ -3,7 +3,8 @@ import {View,StyleSheet,ScrollView,TouchableOpacity,Alert} from 'react-native';
 import {Text,TextInput,Button,Card,Divider,IconButton,RadioButton} from 'react-native-paper';
 import {MaterialCommunityIcons} from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';import axios from 'axios';
-import * as SecureStore from 'expo-secure-store';import * as SQLite from 'expo-sqlite';
+import * as SecureStore from 'expo-secure-store';
+import { clearCartItems } from '../../utils/cartStorage';
 import {API_BASE_URL} from '../../configs/config';
 
 const PICKUP_BRANCHES=["Main Branch - TUP Taguig, Western Bicutan, Taguig City","2nd Branch - Malacanang Village, Paranaque City","Outlet Branch - Near Silangan Elementary School, Upper Bicutan, Taguig City"];
@@ -38,9 +39,7 @@ export default function PlaceOrderPage({route,navigation}){
 
       await axios.post(`${API_BASE_URL}/orders`,payload,{headers:{Authorization:`Bearer ${token}`}});
       
-      const db=await SQLite.openDatabaseAsync('coffeecart.db');
-      try{await db.execAsync("DELETE FROM cart;");}catch(e){} 
-      try{await db.runAsync("UPDATE cart_table SET cart_data = '[]'");}catch(e){}
+      await clearCartItems();
 
       Toast.show({type:'success',text1:'Order Placed!',text2:'Preparing your brew...'});
       setTimeout(()=>navigation.reset({index:0,routes:[{name:'Home'}]}),1000);

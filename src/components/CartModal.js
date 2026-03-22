@@ -2,7 +2,8 @@ import React from 'react';
 import { View, StyleSheet, Modal, FlatList, Image } from 'react-native';
 import { Text, IconButton, Button, Divider } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import * as SQLite from 'expo-sqlite';
+import Toast from 'react-native-toast-message';
+import { saveCartItems } from '../utils/cartStorage';
 
 export default function CartModal({ visible, onClose, cartItems, setCartItems, navigation }) {
   const subtotal = cartItems.reduce((s, i) => s + (i.price * i.qty), 0);
@@ -16,11 +17,13 @@ export default function CartModal({ visible, onClose, cartItems, setCartItems, n
     }).filter(item => item.qty > 0);
 
     setCartItems(newCart);
-    const db = await SQLite.openDatabaseAsync('coffeecart.db');
-    await db.runAsync('UPDATE cart_table SET cart_data = ? WHERE id = 1;', JSON.stringify(newCart));
+    await saveCartItems(newCart);
   };
 
   const handleCheckout = () => {
+    if (!navigation) {
+      return Toast.show({ type: 'info', text1: 'Checkout Unavailable', text2: 'Open the cart from the home screen to continue checkout.' });
+    }
     onClose();
     navigation.navigate('PlaceOrder', {
       orderItems: cartItems.map(i => ({ 
