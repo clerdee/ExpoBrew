@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Image, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, ScrollView, Image, ActivityIndicator, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text, IconButton, Divider, Card, TextInput, Button } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import axios from 'axios';
@@ -46,9 +46,9 @@ export default function ProductDetailModal({ route, navigation }) {
   if (loading && !product) return <View style={styles.center}><ActivityIndicator color="#6F4E37" size="large" /></View>;
 
   return (
-    <View style={styles.bg}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.bg}>
       <View style={styles.head}><IconButton icon="arrow-left" onPress={() => navigation.goBack()} /><Text style={styles.hTitle}>Rate Your Brew</Text><View style={{width:48}}/></View>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         
         <Image source={{ uri: product?.image || orderItem?.image }} style={styles.img} />
         <View style={styles.infoWrap}>
@@ -78,7 +78,7 @@ export default function ProductDetailModal({ route, navigation }) {
         </Card>
 
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
