@@ -22,6 +22,22 @@ const getAllOrders = async (req, res) => {
   catch (e) { res.status(500).json({ message: 'Server Error: Could not fetch all orders.' }); }
 };
 
+const getOrderById = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id);
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    if (order.user.toString() !== req.user._id.toString() && !req.user.isAdmin) {
+      return res.status(401).json({ message: 'Not authorized to view this order' });
+    }
+    
+    res.status(200).json(order);
+  } catch (e) {
+    console.log("Get Order By Id Error:", e);
+    res.status(500).json({ message: 'Server Error: Could not fetch order.' });
+  }
+};
+
 const updateOrderStatus = async (req, res) => {
   try {
     const { status } = req.body;
@@ -58,4 +74,4 @@ const deleteOrder = async (req, res) => {
   }
 };
 
-module.exports = { createOrder, getMyOrders, getAllOrders, updateOrderStatus, deleteOrder };
+module.exports = { createOrder, getMyOrders, getAllOrders, getOrderById, updateOrderStatus, deleteOrder };
