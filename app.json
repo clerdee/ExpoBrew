@@ -8,7 +8,7 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/coffee-logo.png",
+      "image": "/assets/coffee-logo.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -18,11 +18,12 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/coffee-logo.png",
+        "foregroundImage": "/assets/coffee-logo.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.klerd.expobrew"
+      "package": "com.klerd.expobrew",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -30,11 +31,6 @@
     "plugins": [
       "expo-secure-store",
       "expo-sqlite"
-    ],
-    "extra": {
-      "eas": {
-        "projectId": "d6eb39b3-58cf-4faa-9803-c9c728a29948"
-      }
-    }
+    ]
   }
 }
