@@ -8,11 +8,11 @@ import Toast from 'react-native-toast-message';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchOrders } from '../../redux/actions/orderActions';
 
-export default function OrderPage({ navigation }) {
+export default function OrderPage({ navigation, route }) {
   const dispatch = useDispatch();
   const { items: orders, loading, error } = useSelector((state) => state.orderList);
 
-  const [activeTab, setActiveTab] = useState('Active'), [refreshing, setRefreshing] = useState(false);
+  const [activeTab, setActiveTab] = useState(route.params?.initialTab || 'Active'), [refreshing, setRefreshing] = useState(false);
   const [isGuest, setIsGuest] = useState(false);
 
   useFocusEffect(
@@ -24,6 +24,8 @@ export default function OrderPage({ navigation }) {
         })();
       }, [dispatch])
     );
+
+  useEffect(() => { if (route.params?.initialTab) setActiveTab(route.params.initialTab); }, [route.params?.initialTab]);
 
   useEffect(() => { if (error) Toast.show({ type: 'error', text1: 'Orders Error', text2: error }); }, [error]);
 

@@ -2,8 +2,10 @@ import React,{useState,useMemo,useEffect} from 'react';
 import {View,StyleSheet,ScrollView,TouchableOpacity,Alert} from 'react-native';
 import {Text,TextInput,Button,Card,Divider,IconButton,RadioButton} from 'react-native-paper';
 import {MaterialCommunityIcons} from '@expo/vector-icons';
-import Toast from 'react-native-toast-message';import axios from 'axios';
-import * as SecureStore from 'expo-secure-store';import * as SQLite from 'expo-sqlite';
+import Toast from 'react-native-toast-message';
+import axios from 'axios';
+import * as SecureStore from 'expo-secure-store';
+import { clearCartItems } from '../../utils/cartStorage';
 import {API_BASE_URL} from '../../configs/config';
 
 const PICKUP_BRANCHES=["Main Branch - TUP Taguig, Western Bicutan, Taguig City","2nd Branch - Malacanang Village, Paranaque City","Outlet Branch - Near Silangan Elementary School, Upper Bicutan, Taguig City"];
@@ -26,8 +28,8 @@ export default function PlaceOrderPage({route,navigation}){
 
   const handlePlaceOrder=async()=>{
     const shippingAddress=method==='Pickup'?`PICKUP: ${branch}`:(addrType==='custom'?customAddr:user?.addresses[addrType]);
-    if(method==='Delivery'&&!shippingAddress)return Alert.alert("Error","Please select or enter a delivery address.");
-    
+    if(method==='Delivery'&&!shippingAddress)return Alert.alert('Error','Please select or enter a delivery address.');
+
     setLoading(true);
     try{
       const token=await SecureStore.getItemAsync('userToken');
@@ -36,17 +38,20 @@ export default function PlaceOrderPage({route,navigation}){
         shippingAddress,paymentMethod:mop,totalPrice:finalPrice,discountAmount:discount||0
       };
 
-      await axios.post(`${API_BASE_URL}/orders`,payload,{headers:{Authorization:`Bearer ${token}`}});
-      
-      const db=await SQLite.openDatabaseAsync('coffeecart.db');
-      try{await db.execAsync("DELETE FROM cart;");}catch(e){} 
-      try{await db.runAsync("UPDATE cart_table SET cart_data = '[]'");}catch(e){}
+      const response = await axios.post(`${API_BASE_URL}/orders`,payload,{headers:{Authorization:`Bearer ${token}`}});
+      console.log('Order created:', response.data?._id || response.status);
+
+      try {
+        await clearCartItems();
+      } catch (cartError) {
+        console.log('Cart clear warning after order success:', cartError.message || cartError);
+      }
 
       Toast.show({type:'success',text1:'Order Placed!',text2:'Preparing your brew...'});
       setTimeout(()=>navigation.reset({index:0,routes:[{name:'Home'}]}),1000);
     }catch(e){
-      console.log("Checkout Error:",e.response?.data||e.message);
-      Toast.show({type:'error',text1:'Order failed',text2:'Check your connection or try again.'});
+      console.log('Checkout Error:',e.response?.data||e.message);
+      Toast.show({type:'error',text1:'Order failed',text2:e.response?.data?.message||'Check your connection or try again.'});
     }finally{setLoading(false);}
   };
 

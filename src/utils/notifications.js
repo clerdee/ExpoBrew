@@ -2,8 +2,11 @@ import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
+import * as SecureStore from 'expo-secure-store';
 import axios from 'axios';
 import { API_BASE_URL } from '../configs/config';
+
+const LOCAL_PUSH_TOKEN_KEY = 'expoPushToken';
 
 export const notificationProjectId =
   Constants?.expoConfig?.extra?.eas?.projectId ||
@@ -64,5 +67,25 @@ export async function syncPushTokenToBackend(authToken) {
     { headers: { Authorization: `Bearer ${authToken}` } }
   );
 
+  await SecureStore.setItemAsync(LOCAL_PUSH_TOKEN_KEY, token);
   return { token, saved: true, error: null };
+}
+
+export async function clearPushTokenFromBackend(authToken) {
+  const localToken = await SecureStore.getItemAsync(LOCAL_PUSH_TOKEN_KEY);
+
+  if (!authToken || !localToken) {
+    if (localToken) {
+      await SecureStore.deleteItemAsync(LOCAL_PUSH_TOKEN_KEY);
+    }
+    return { cleared: false, error: !authToken ? 'Missing auth token.' : 'No local push token saved.' };
+  }
+
+  await axios.delete(`${API_BASE_URL}/users/push-token`, {
+    headers: { Authorization: `Bearer ${authToken}` },
+    data: { token: localToken },
+  });
+
+  await SecureStore.deleteItemAsync(LOCAL_PUSH_TOKEN_KEY);
+  return { cleared: true, error: null };
 }

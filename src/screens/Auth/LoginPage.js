@@ -98,10 +98,6 @@ const LoginPage = ({ navigation }) => {
           right={<TextInput.Icon icon={isPasswordSecure ? 'eye-off' : 'eye'} color="#888" onPress={() => setIsPasswordSecure(!isPasswordSecure)} />}
         />
 
-        <View style={styles.forgotPasswordContainer}>
-          <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-        </View>
-
         <Button
           mode="contained"
           buttonColor="#6F4E37"
@@ -135,8 +131,6 @@ const styles = StyleSheet.create({
   title: { fontWeight: 'bold', color: '#4A3B32', marginBottom: 5, textAlign: 'center' },
   subtitle: { color: '#666', marginBottom: 35, textAlign: 'center' },
   input: { backgroundColor: '#fff', marginBottom: 15 },
-  forgotPasswordContainer: { alignSelf: 'flex-end', marginBottom: 25 },
-  forgotPasswordText: { color: '#6F4E37', fontWeight: '600' },
   loginBtn: { borderRadius: 12, marginBottom: 30 },
   loginBtnContent: { height: 55 },
   loginBtnLabel: { fontSize: 16, fontWeight: 'bold' },

@@ -4,9 +4,9 @@ import { Text, IconButton, Divider, Card, Avatar, Button, RadioButton } from 're
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import axios from 'axios';
 import Toast from 'react-native-toast-message';
-import * as SQLite from 'expo-sqlite';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../configs/config';
+import { loadCartItems, saveCartItems } from '../../utils/cartStorage';
 
 const SIZES = [{ l: 'Tall', p: 0 }, { l: 'Grande', p: 25 }, { l: 'Venti', p: 40 }];
 const OPTIONS = {
@@ -44,11 +44,12 @@ export default function IndividualProductPage({ route, navigation }) {
   const toggleSimple = (list, set, val) => set(list.includes(val) ? list.filter(i => i !== val) : [...list, val]);
 
   const handleAddToCart = async () => {
+    if (!currentUser) {
+      return Toast.show({ type: 'info', text1: 'Login Required', text2: 'Please log in or register to add items to your cart.' });
+    }
+
     try {
-      const db = await SQLite.openDatabaseAsync('coffeecart.db');
-      await db.execAsync('CREATE TABLE IF NOT EXISTS cart_table (id INTEGER PRIMARY KEY NOT NULL, cart_data TEXT);');
-      const saved = await db.getFirstAsync('SELECT cart_data FROM cart_table WHERE id = 1;');
-      let currentCart = saved?.cart_data ? JSON.parse(saved.cart_data) : [];
+      const currentCart = await loadCartItems();
 
       const newItem = {
         ...product, price: totalPrice, qty: 1, cartId: Date.now().toString() + Math.random().toString(36).substr(2, 5),
@@ -56,7 +57,7 @@ export default function IndividualProductPage({ route, navigation }) {
       };
 
       currentCart.push(newItem);
-      await db.runAsync('INSERT OR REPLACE INTO cart_table (id, cart_data) VALUES (1, ?);', JSON.stringify(currentCart));
+      await saveCartItems(currentCart);
       Toast.show({ type: 'success', text1: 'Added to Basket', text2: `${product.name} added successfully!` });
       navigation.goBack();
     } catch (e) { Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to add to cart.' }); }

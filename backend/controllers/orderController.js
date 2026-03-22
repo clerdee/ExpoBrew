@@ -99,14 +99,15 @@ const updateOrderStatus = async (req, res) => {
       relatedId: order._id,
     });
 
-    const pushResult = await sendExpoPushNotifications([
-      {
-        to: order.user?.expoPushToken,
+    const userTokens = [...new Set([...(order.user?.expoPushTokens || []), order.user?.expoPushToken].filter(Boolean))];
+    const pushResult = await sendExpoPushNotifications(
+      userTokens.map((token) => ({
+        to: token,
         title: 'Order Status Update',
         body: `Your order is now: ${status}`,
         data: { type: 'order', orderId: String(order._id) },
-      },
-    ]);
+      }))
+    );
 
     if (!pushResult.sent) {
       console.log(`Order ${order._id}: no valid Expo push token to notify.`);

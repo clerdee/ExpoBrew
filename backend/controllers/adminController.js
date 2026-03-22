@@ -78,13 +78,17 @@ const createPromo = async (req, res) => {
 
     const usersWithPushTokens = await User.find({
       role: 'customer',
-      expoPushToken: { $exists: true, $ne: null },
+      $or: [
+        { expoPushToken: { $exists: true, $ne: null } },
+        { expoPushTokens: { $exists: true, $ne: [] } },
+      ],
       isActive: true,
-    }).select('expoPushToken');
+    }).select('expoPushToken expoPushTokens');
 
-    const pushResult = await sendExpoPushNotifications(
-      usersWithPushTokens.map((user) => ({
-        to: user.expoPushToken,
+    const pushMessages = usersWithPushTokens.flatMap((user) => {
+      const tokens = [...new Set([...(user.expoPushTokens || []), user.expoPushToken].filter(Boolean))];
+      return tokens.map((token) => ({
+        to: token,
         title: `🎁 ${promo.title}`,
         body: `${prefix}${promo.description}`,
         data: {
@@ -97,8 +101,10 @@ const createPromo = async (req, res) => {
           value: promo.value,
           validUntil: promo.validUntil,
         },
-      }))
-    );
+      }));
+    });
+
+    const pushResult = await sendExpoPushNotifications(pushMessages);
 
     if (pushResult.ticketErrors.length || pushResult.receiptErrors.length) {
       console.log('Promo push notification issues:', pushResult);
@@ -117,6 +123,22 @@ const getPromos = async (req, res) => {
   } catch (error) {
     console.error('Get promos error:', error);
     return res.status(500).json({ message: 'Error', error: error.message });
+  }
+};
+
+const deletePromo = async (req, res) => {
+  try {
+    const promo = await Promo.findByIdAndDelete(req.params.id);
+
+    if (!promo) {
+      return res.status(404).json({ message: 'Promo not found.' });
+    }
+
+    await Notification.deleteMany({ type: 'Promo', relatedId: promo._id });
+    return res.status(200).json({ message: 'Promo deleted successfully.' });
+  } catch (error) {
+    console.error('Delete promo error:', error);
+    return res.status(500).json({ message: 'Failed to delete promo.' });
   }
 };
 
@@ -173,6 +195,7 @@ module.exports = {
   updateOrderStatus,
   createPromo,
   getPromos,
+  deletePromo,
   deactivateUser,
   getAllReviews,
   deleteReview,

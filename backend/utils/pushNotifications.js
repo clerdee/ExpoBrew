@@ -5,7 +5,7 @@ const EXPO_PUSH_ENDPOINT = 'https://exp.host/--/api/v2/push/send';
 const EXPO_RECEIPT_ENDPOINT = 'https://exp.host/--/api/v2/push/getReceipts';
 const MAX_MESSAGES_PER_REQUEST = 100;
 
-const isExpoPushToken = (token) => typeof token === 'string' && /^ExponentPushToken\[.+\]$/.test(token);
+const isExpoPushToken = (token) => typeof token === 'string' && /^(Exponent|Expo)PushToken\[.+\]$/.test(token);
 
 const chunk = (items, size) => {
   const result = [];
@@ -21,8 +21,11 @@ const clearStaleTokens = async (tokens = []) => {
 
   try {
     await User.updateMany(
-      { expoPushToken: { $in: uniqueTokens } },
-      { $set: { expoPushToken: null } }
+      { $or: [{ expoPushToken: { $in: uniqueTokens } }, { expoPushTokens: { $in: uniqueTokens } }] },
+      {
+        $pull: { expoPushTokens: { $in: uniqueTokens } },
+        $set: { expoPushToken: null },
+      }
     );
     console.log(`Cleared ${uniqueTokens.length} stale Expo push token(s).`);
   } catch (error) {

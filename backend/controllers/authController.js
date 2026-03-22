@@ -1,25 +1,12 @@
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const nodemailer = require('nodemailer');
-const { generateOtpEmail } = require('../utils/emailTemplates');
-
-const tempUsers = new Map();
-
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
-
-const isEmailOtpConfigured = () => Boolean(process.env.EMAIL_USER && process.env.EMAIL_PASS);
 
 const normalizeEmail = (email = '') => email.trim().toLowerCase();
 
 const buildUserPayload = (user) => ({
   id: user._id,
+  _id: user._id,
   name: user.name,
   email: user.email,
   role: user.role,
@@ -59,59 +46,20 @@ const registerUser = async (req, res) => {
       return res.status(400).json({ message: 'An account with this email already exists.' });
     }
 
-    if (!isEmailOtpConfigured()) {
-      const user = await createPersistedUser({ name, email, password });
-      return res.status(201).json({
-        message: 'Account created successfully. Email OTP is not configured on the server.',
-        requiresOtp: false,
-        userCreated: true,
-        user: buildUserPayload(user),
-      });
-    }
-
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    tempUsers.set(email, {
+    const user = await createPersistedUser({
       name,
       email,
       password,
-      otp,
-      expires: Date.now() + 10 * 60 * 1000,
+      profileImage: req.file ? req.file.path : null,
+      profileImageId: req.file ? req.file.filename : null,
     });
 
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: 'Verify your ExpoBrew Account',
-      html: generateOtpEmail(otp),
-    });
-
-    return res.status(200).json({
-      message: 'OTP sent to your email!',
-      requiresOtp: true,
-      userCreated: false,
+    return res.status(201).json({
+      message: 'Account created successfully.',
+      user: buildUserPayload(user),
     });
   } catch (error) {
     console.error('Registration error:', error);
-
-    const fallbackAllowed = !isEmailOtpConfigured() || error?.code === 'EAUTH' || error?.code === 'ESOCKET';
-    const name = req.body?.name?.trim();
-    const email = normalizeEmail(req.body?.email);
-    const password = req.body?.password;
-
-    if (fallbackAllowed && name && email && password && !(await User.findOne({ email }))) {
-      try {
-        const user = await createPersistedUser({ name, email, password });
-        return res.status(201).json({
-          message: 'Account created successfully. Email delivery is unavailable right now, so OTP was skipped.',
-          requiresOtp: false,
-          userCreated: true,
-          user: buildUserPayload(user),
-        });
-      } catch (fallbackError) {
-        console.error('Registration fallback error:', fallbackError);
-      }
-    }
-
     return res.status(500).json({
       message: 'Server error during registration.',
       detail: error.message,
@@ -120,44 +68,9 @@ const registerUser = async (req, res) => {
 };
 
 const verifyOtp = async (req, res) => {
-  try {
-    const email = normalizeEmail(req.body?.email);
-    const { otp } = req.body;
-    const temp = tempUsers.get(email);
-
-    if (!temp) {
-      return res.status(400).json({ message: 'Session expired or email not found. Please register again.' });
-    }
-
-    if (temp.otp !== otp) {
-      return res.status(400).json({ message: 'Invalid OTP code.' });
-    }
-
-    if (Date.now() > temp.expires) {
-      tempUsers.delete(email);
-      return res.status(400).json({ message: 'OTP has expired. Please register again.' });
-    }
-
-    const user = await createPersistedUser({
-      name: temp.name,
-      email: temp.email,
-      password: temp.password,
-      profileImage: req.file ? req.file.path : null,
-      profileImageId: req.file ? req.file.filename : null,
-    });
-
-    tempUsers.delete(email);
-    return res.status(201).json({
-      message: 'User verified!',
-      user: buildUserPayload(user),
-    });
-  } catch (error) {
-    console.error('OTP verification error:', error);
-    return res.status(500).json({
-      message: 'Server error during verification.',
-      detail: error.message,
-    });
-  }
+  return res.status(410).json({
+    message: 'OTP registration is no longer used. Please register directly from the app.',
+  });
 };
 
 const loginUser = async (req, res) => {
