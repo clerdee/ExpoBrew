@@ -5,7 +5,7 @@ const Product = require('../models/Product');
 const getProductReviews = async (req, res) => {
   try {
     const reviews = await Review.find({ product: req.params.productId })
-      .populate('user', 'name profileImage')
+      .populate('user', 'name profileImage email')
       .sort({ createdAt: -1 });
     res.status(200).json(reviews);
   } catch (e) {

@@ -56,7 +56,7 @@ const deactivateUser = async (req, res) => {
 const getAllReviews = async (req, res) => {
   try {
     const reviews = await Review.find({})
-      .populate('user', 'name profileImage') 
+      .populate('user', 'name profileImage email') 
       .populate('product', 'name')
       .sort({ createdAt: -1 });
     res.status(200).json(reviews);
