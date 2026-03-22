@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Modal, Alert } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Modal } from 'react-native';
 import { Text, Card, Divider, IconButton, Button } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
@@ -49,7 +49,7 @@ export default function OrderDetail({ route, navigation }) {
       Toast.show({ type: 'success', text1: 'Order Deleted' });
       if(refresh) refresh();
       setDelVis(false);
-      navigation.goBack(); 
+      navigation.navigate('Orders'); 
     } catch (e) { 
       console.log("Delete Error:", e.response?.data || e.message);
       setDelVis(false);
@@ -73,7 +73,8 @@ export default function OrderDetail({ route, navigation }) {
   return (
     <View style={styles.bg}>
       <View style={styles.head}>
-        <IconButton icon="arrow-left" size={24} onPress={() => navigation.goBack()} style={{margin:0, marginLeft:-10}}/>
+        {/* CHANGED GOBACK TO NAVIGATE TO 'Orders' */}
+        <IconButton icon="arrow-left" size={24} onPress={() => navigation.navigate('Orders')} style={{margin:0, marginLeft:-10}}/>
         <Text style={styles.hTxt}>Order Details</Text>
       </View>
 

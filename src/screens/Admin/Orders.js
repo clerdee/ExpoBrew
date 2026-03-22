@@ -13,6 +13,7 @@ const DATES = ['All Time', 'Today', 'This Hour'];
 export default function AdminOrders({ navigation }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false); 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [dateFilter, setDateFilter] = useState('Today');
@@ -20,38 +21,39 @@ export default function AdminOrders({ navigation }) {
   const [tempStatus, setTempStatus] = useState('All');
   const [tempDate, setTempDate] = useState('Today');
 
-  const fetchOrders = useCallback(async () => {
-    setLoading(true);
+  const fetchOrders = useCallback(async (isRefresh = false) => {
+    if (!isRefresh && orders.length === 0) setLoading(true);
+    if (isRefresh) setRefreshing(true);
+    
     try {
       const t = await SecureStore.getItemAsync('userToken');
       const response = await axios.get(`${API_BASE_URL}/orders`, { headers: { Authorization: `Bearer ${t}` } });
       setOrders(response.data);
     } catch (e) { 
       console.error("Fetch Orders Error:", e.response?.data || e.message);
-      Toast.show({ type: 'error', text1: 'Failed to load orders' }); 
-    } finally { setLoading(false); }
-  }, []);
+      if (isRefresh) Toast.show({ type: 'error', text1: 'Failed to load orders' }); 
+    } finally { 
+      setLoading(false); 
+      setRefreshing(false);
+    }
+  }, [orders.length]);
 
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
+
+  useEffect(() => {
+    const interval = setInterval(() => { fetchOrders(true); }, 5000);
+    return () => clearInterval(interval); 
+  }, [fetchOrders]);
 
   const handleAccept = async (id) => {
     try {
       const t = await SecureStore.getItemAsync('userToken');
-      // NOTE: Ensure your backend has the route PUT /api/orders/:id/status
-      // If it fails, check if the route is actually just PUT /api/orders/:id
-      await axios.put(`${API_BASE_URL}/orders/${id}/status`, 
-        { status: 'Preparing' }, 
-        { headers: { Authorization: `Bearer ${t}` } }
-      );
+      await axios.put(`${API_BASE_URL}/orders/${id}/status`, { status: 'Preparing' }, { headers: { Authorization: `Bearer ${t}` } });
       Toast.show({ type: 'success', text1: 'Order Accepted', text2: 'Moved to Preparing' });
-      fetchOrders();
+      fetchOrders(true);
     } catch (e) { 
       console.error("Update Order Error:", e.response?.data || e.message);
-      Toast.show({ 
-        type: 'error', 
-        text1: 'Failed to update order', 
-        text2: e.response?.data?.message || 'Check console for details' 
-      }); 
+      Toast.show({ type: 'error', text1: 'Failed to update order', text2: e.response?.data?.message || 'Check console for details' }); 
     }
   };
 
@@ -71,7 +73,7 @@ export default function AdminOrders({ navigation }) {
   const renderItem = ({ item: o }) => {
     const sCfg = { Pending: { c: '#F1C40F' }, Preparing: { c: '#E67E22' }, Ready: { c: '#3498DB' }, Completed: { c: '#27AE60' }, Cancelled: { c: '#E74C3C' } }[o.status] || { c: '#888' };
     return (
-      <TouchableOpacity activeOpacity={0.8} onPress={() => navigation.navigate('OrderDetail', { order: o, refresh: fetchOrders })}>
+      <TouchableOpacity activeOpacity={0.8} onPress={() => navigation.navigate('OrderDetail', { order: o, refresh: () => fetchOrders(true) })}>
         <Card style={styles.card} mode="elevated">
           <View style={styles.cardContent}>
             <View style={styles.rowTop}>
@@ -111,7 +113,7 @@ export default function AdminOrders({ navigation }) {
           <View style={styles.headerRow}>
             <IconButton icon="menu" size={28} iconColor="#FFF" onPress={() => navigation.toggleDrawer?.()} style={{ marginLeft: -10 }} />
             <Text style={styles.title}>Orders</Text>
-            <IconButton icon="refresh" size={28} iconColor="#FFF" onPress={fetchOrders} style={{ marginRight: -10 }} />
+            <IconButton icon="refresh" size={28} iconColor="#FFF" onPress={()=>fetchOrders(true)} style={{ marginRight: -10 }} />
           </View>
         </View>
         <View style={styles.searchRow}>
@@ -121,9 +123,16 @@ export default function AdminOrders({ navigation }) {
       </View>
       <View style={styles.bottom}>
         {loading ? <ActivityIndicator size="large" color="#4A2E1B" style={styles.loader} /> : (
-          <FlatList data={filtered} keyExtractor={i => i._id.toString()} renderItem={renderItem} contentContainerStyle={styles.list} showsVerticalScrollIndicator={false} ListEmptyComponent={
-            <View style={styles.empty}><MaterialCommunityIcons name="clipboard-text-off" size={60} color="#CCC" /><Text style={styles.emptyText}>No matching orders found.</Text></View>
-          } />
+          <FlatList 
+            data={filtered} 
+            keyExtractor={i => i._id.toString()} 
+            renderItem={renderItem} 
+            contentContainerStyle={styles.list} 
+            showsVerticalScrollIndicator={false} 
+            onRefresh={() => fetchOrders(true)} // Swipe to refresh logic
+            refreshing={refreshing} // Tied to our new state
+            ListEmptyComponent={<View style={styles.empty}><MaterialCommunityIcons name="clipboard-text-off" size={60} color="#CCC" /><Text style={styles.emptyText}>No matching orders found.</Text></View>} 
+          />
         )}
       </View>
       <Modal animationType="slide" transparent visible={filterVis} onRequestClose={() => setFilterVis(false)}>
