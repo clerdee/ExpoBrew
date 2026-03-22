@@ -32,7 +32,7 @@ const buildUserPayload = (user) => ({
 });
 
 const createPersistedUser = async ({ name, email, password, profileImage = null, profileImageId = null }) => {
-  const hashedPassword = await bcrypt.hash(password, await bcrypt.genSalt(10));
+  const hashedPassword = password ? await bcrypt.hash(password, await bcrypt.genSalt(10)) : undefined;
   return User.create({
     name: name.trim(),
     email: normalizeEmail(email),
@@ -47,37 +47,20 @@ const registerUser = async (req, res) => {
     const name = req.body?.name?.trim();
     const email = normalizeEmail(req.body?.email);
     const password = req.body?.password;
+    const profileImage = req.file ? req.file.path : null;
+    const profileImageId = req.file ? req.file.filename : null;
 
-    if (!name || !email || !password) {
-      return res.status(400).json({ message: 'Name, email, and password are required.' });
-    }
-
-    if (password.length < 6) {
-      return res.status(400).json({ message: 'Password must be at least 6 characters long.' });
-    }
-
-    if (await User.findOne({ email })) {
-      return res.status(400).json({ message: 'An account with this email already exists.' });
-    }
+    if (!name || !email || !password) return res.status(400).json({ message: 'Name, email, and password are required.' });
+    if (password.length < 6) return res.status(400).json({ message: 'Password must be at least 6 characters long.' });
+    if (await User.findOne({ email })) return res.status(400).json({ message: 'An account with this email already exists.' });
 
     if (!isEmailOtpConfigured()) {
-      const user = await createPersistedUser({ name, email, password });
-      return res.status(201).json({
-        message: 'Account created successfully. Email OTP is not configured on the server.',
-        requiresOtp: false,
-        userCreated: true,
-        user: buildUserPayload(user),
-      });
+      const user = await createPersistedUser({ name, email, password, profileImage, profileImageId });
+      return res.status(201).json({ message: 'Account created successfully. Email OTP skipped.', requiresOtp: false, userCreated: true, user: buildUserPayload(user) });
     }
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    tempUsers.set(email, {
-      name,
-      email,
-      password,
-      otp,
-      expires: Date.now() + 10 * 60 * 1000,
-    });
+    tempUsers.set(email, { name, email, password, otp, expires: Date.now() + 10 * 60 * 1000, profileImage, profileImageId });
 
     await transporter.sendMail({
       from: process.env.EMAIL_USER,
@@ -86,37 +69,27 @@ const registerUser = async (req, res) => {
       html: generateOtpEmail(otp),
     });
 
-    return res.status(200).json({
-      message: 'OTP sent to your email!',
-      requiresOtp: true,
-      userCreated: false,
-    });
+    return res.status(200).json({ message: 'OTP sent to your email!', requiresOtp: true, userCreated: false });
   } catch (error) {
     console.error('Registration error:', error);
-
     const fallbackAllowed = !isEmailOtpConfigured() || error?.code === 'EAUTH' || error?.code === 'ESOCKET';
-    const name = req.body?.name?.trim();
     const email = normalizeEmail(req.body?.email);
-    const password = req.body?.password;
 
-    if (fallbackAllowed && name && email && password && !(await User.findOne({ email }))) {
+    if (fallbackAllowed && req.body?.name && email && req.body?.password && !(await User.findOne({ email }))) {
       try {
-        const user = await createPersistedUser({ name, email, password });
-        return res.status(201).json({
-          message: 'Account created successfully. Email delivery is unavailable right now, so OTP was skipped.',
-          requiresOtp: false,
-          userCreated: true,
-          user: buildUserPayload(user),
+        const user = await createPersistedUser({ 
+          name: req.body.name.trim(), 
+          email, 
+          password: req.body.password, 
+          profileImage: req.file ? req.file.path : null, 
+          profileImageId: req.file ? req.file.filename : null 
         });
+        return res.status(201).json({ message: 'Account created successfully via fallback. OTP skipped.', requiresOtp: false, userCreated: true, user: buildUserPayload(user) });
       } catch (fallbackError) {
         console.error('Registration fallback error:', fallbackError);
       }
     }
-
-    return res.status(500).json({
-      message: 'Server error during registration.',
-      detail: error.message,
-    });
+    return res.status(500).json({ message: 'Server error during registration.', detail: error.message });
   }
 };
 
@@ -126,14 +99,8 @@ const verifyOtp = async (req, res) => {
     const { otp } = req.body;
     const temp = tempUsers.get(email);
 
-    if (!temp) {
-      return res.status(400).json({ message: 'Session expired or email not found. Please register again.' });
-    }
-
-    if (temp.otp !== otp) {
-      return res.status(400).json({ message: 'Invalid OTP code.' });
-    }
-
+    if (!temp) return res.status(400).json({ message: 'Session expired or email not found. Please register again.' });
+    if (temp.otp !== otp) return res.status(400).json({ message: 'Invalid OTP code.' });
     if (Date.now() > temp.expires) {
       tempUsers.delete(email);
       return res.status(400).json({ message: 'OTP has expired. Please register again.' });
@@ -143,21 +110,14 @@ const verifyOtp = async (req, res) => {
       name: temp.name,
       email: temp.email,
       password: temp.password,
-      profileImage: req.file ? req.file.path : null,
-      profileImageId: req.file ? req.file.filename : null,
+      profileImage: req.file ? req.file.path : temp.profileImage || null,
+      profileImageId: req.file ? req.file.filename : temp.profileImageId || null,
     });
 
     tempUsers.delete(email);
-    return res.status(201).json({
-      message: 'User verified!',
-      user: buildUserPayload(user),
-    });
+    return res.status(201).json({ message: 'User verified!', user: buildUserPayload(user) });
   } catch (error) {
-    console.error('OTP verification error:', error);
-    return res.status(500).json({
-      message: 'Server error during verification.',
-      detail: error.message,
-    });
+    return res.status(500).json({ message: 'Server error during verification.', detail: error.message });
   }
 };
 
@@ -165,29 +125,15 @@ const loginUser = async (req, res) => {
   try {
     const email = normalizeEmail(req.body?.email);
     const { password } = req.body;
-
     const user = await User.findOne({ email });
 
-    if (!user || !(await bcrypt.compare(password, user.password))) {
-      return res.status(400).json({ message: 'Invalid email or password.' });
-    }
-
-    if (user.isActive === false) {
-      return res.status(403).json({ message: 'Your account has been deactivated. Please contact an admin.' });
-    }
+    if (!user || !user.password || !(await bcrypt.compare(password, user.password))) return res.status(400).json({ message: 'Invalid email or password.' });
+    if (user.isActive === false) return res.status(403).json({ message: 'Account deactivated. Please contact an admin.' });
 
     const token = jwt.sign({ id: user._id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '7d' });
-    return res.status(200).json({
-      message: 'Login successful!',
-      token,
-      user: buildUserPayload(user),
-    });
+    return res.status(200).json({ message: 'Login successful!', token, user: buildUserPayload(user) });
   } catch (error) {
-    console.error('Login error:', error);
-    return res.status(500).json({
-      message: 'Server error. Please try again.',
-      detail: error.message,
-    });
+    return res.status(500).json({ message: 'Server error.', detail: error.message });
   }
 };
 
@@ -197,21 +143,17 @@ const googleLogin = async (req, res) => {
     if (!email || !googleId) return res.status(400).json({ message: 'Email and Google ID are required.' });
 
     let user = await User.findOne({ email: normalizeEmail(email) });
-
-    if (!user) {
-      user = await User.create({ name, email: normalizeEmail(email), googleId, profileImage });
-    } else if (!user.googleId) {
+    if (!user) user = await User.create({ name, email: normalizeEmail(email), googleId, profileImage });
+    else if (!user.googleId) {
       user.googleId = googleId;
       if (!user.profileImage && profileImage) user.profileImage = profileImage;
       await user.save();
     }
 
     if (user.isActive === false) return res.status(403).json({ message: 'Account deactivated.' });
-
     const token = jwt.sign({ id: user._id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '7d' });
     return res.status(200).json({ message: 'Google login successful!', token, user: buildUserPayload(user) });
   } catch (error) {
-    console.error('Google login error:', error);
     return res.status(500).json({ message: 'Server error.', detail: error.message });
   }
 };
