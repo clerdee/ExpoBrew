@@ -5,6 +5,7 @@ const notificationSchema = new mongoose.Schema({
   title: { type: String, required: true },
   message: { type: String, required: true },
   type: { type: String, enum: ['Order', 'Promo'], required: true },
+  relatedId: { type: mongoose.Schema.Types.ObjectId },
   isRead: { type: Boolean, default: false }
 }, { timestamps: true });
 

@@ -1,179 +1,201 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
-import { Text, TextInput, Button, IconButton, Avatar } from 'react-native-paper';
+import { Text, TextInput, Button, Avatar, IconButton } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as SecureStore from 'expo-secure-store';
 import Toast from 'react-native-toast-message';
+import axios from 'axios';
 import { API_BASE_URL } from '../configs/config';
 
-const ProfilePage = ({ navigation }) => {
- const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [profileImage, setProfileImage] = useState(null);
-  const [phone, setPhone] = useState('');
-  const [birthday, setBirthday] = useState('');
-  const [address, setAddress] = useState('');
-  const [isPasswordSecure, setIsPasswordSecure] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isGuest, setIsGuest] = useState(false);
+export default function ProfilePage({ navigation }) {
+  const [activeTab, setActiveTab] = useState('details');
+  const [name, setName] = useState(""), [email, setEmail] = useState("");
+  const [currentPassword, setCurrentPassword] = useState(""), [newPassword, setNewPassword] = useState("");
+  const [profileImage, setProfileImage] = useState(null), [phone, setPhone] = useState("");
+  const [birthday, setBirthday] = useState(""), [addresses, setAddresses] = useState([""]);
+  const [isPasswordSecure, setIsPasswordSecure] = useState(true), [isLoading, setIsLoading] = useState(false);
+  const [isGuest, setIsGuest] = useState(false), [orig, setOrig] = useState({});
 
   useEffect(() => {
     (async () => {
       try {
         const token = await SecureStore.getItemAsync('userToken');
         const userStr = await SecureStore.getItemAsync('userInfo');
-        
         if (!token || !userStr) return setIsGuest(true);
-        
+
         setIsGuest(false);
-        const user = JSON.parse(userStr);
-        setName(user.name || '');
-        setEmail(user.email || '');
-        setProfileImage(user.profileImage || null);
-        setPhone(user.phone || '');
-        setBirthday(user.birthday || '');
-        setAddress(user.address || '');
-      } catch (e) {
-        console.error('Error loading profile:', e);
-      }
+        const { data } = await axios.get(`${API_BASE_URL}/users/profile`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        await SecureStore.setItemAsync('userInfo', JSON.stringify(data));
+
+        const init = {
+          name: data.name || '',
+          email: data.email || '',
+          profileImage: data.profileImage || null,
+          phone: data.phone || '',
+          birthday: data.birthday || '',
+          addresses: data.addresses?.length ? data.addresses : [''],
+        };
+
+        setOrig(init);
+        setName(init.name);
+        setEmail(init.email);
+        setProfileImage(init.profileImage);
+        setPhone(init.phone);
+        setBirthday(init.birthday);
+        setAddresses([...init.addresses]);
+      } catch (e) { console.error('Error loading profile:', e.response?.data || e.message); }
     })();
   }, []);
 
-  const pickFromGallery = async () => {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
- if (!perm.granted) return Toast.show({ type: 'error', text1: 'Permission Required' });
-    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.5 });
-    if (!res.canceled) setProfileImage(res.assets[0].uri);
+  const hasChanges = name !== orig.name || email !== orig.email || profileImage !== orig.profileImage || phone !== orig.phone || birthday !== orig.birthday || JSON.stringify(addresses) !== JSON.stringify(orig.addresses) || currentPassword !== "" || newPassword !== "";
+
+  const handleCancel = () => {
+    setName(orig.name); setEmail(orig.email); setProfileImage(orig.profileImage); setPhone(orig.phone);
+    setBirthday(orig.birthday); setAddresses([...orig.addresses]); setCurrentPassword(""); setNewPassword("");
   };
 
-  const takePhoto = async () => {
-    const perm = await ImagePicker.requestCameraPermissionsAsync();
-      if (!perm.granted) return Toast.show({ type: 'error', text1: 'Permission Required' });
-    const res = await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.5 });
-    if (!res.canceled) setProfileImage(res.assets[0].uri);
+  const formatPhone = (val) => setPhone(val.replace(/\D/g, '').substring(0, 11));
+  const formatBday = (val) => {
+    let v = val.replace(/\D/g, '').substring(0, 8);
+    if (v.length > 4) v = v.replace(/^(\d{2})(\d{2})(\d{1,4})/, '$1/$2/$3');
+    else if (v.length > 2) v = v.replace(/^(\d{2})(\d{1,2})/, '$1/$2');
+    setBirthday(v);
   };
-
-    const showImageOptions = () => Alert.alert('Profile Picture', 'Update your avatar', [
-    { text: 'Take Photo', onPress: takePhoto },
-    { text: 'Choose from Gallery', onPress: pickFromGallery },
-    { text: 'Cancel', style: 'cancel' }
-  ]);
 
   const handleUpdateProfile = async () => {
-     if (!name || !email) {
-      return Toast.show({ type: 'error', text1: 'Wait!', text2: 'Name and email are required.' });
-    }
-
+    if (!name || !email) return Toast.show({ type: "error", text1: "Wait!", text2: "Name and email are required." });
+    if (newPassword && !currentPassword) return Toast.show({ type: "error", text1: "Wait!", text2: "Enter current password to set a new one." });
+    if (phone && phone.length !== 11) return Toast.show({ type: "error", text1: "Invalid Phone", text2: "Phone number must be exactly 11 digits." });
+    if (birthday && birthday.length !== 10) return Toast.show({ type: "error", text1: "Invalid Birthday", text2: "Please enter a valid MM/DD/YYYY format." });
+    
     setIsLoading(true);
     try {
-        const token = await SecureStore.getItemAsync('userToken');
-      if (!token) throw new Error('Missing user token');
-
+      const token = await SecureStore.getItemAsync('userToken');
       const formData = new FormData();
-      formData.append('name', name.trim());
-      formData.append('email', email.trim().toLowerCase());
-      formData.append('phone', phone.trim());
-      formData.append('birthday', birthday.trim());
-      formData.append('address', address.trim());
-
-      if (password.trim()) {
-        formData.append('password', password);
+      formData.append('name', name);
+      formData.append('email', email);
+      formData.append('phone', phone);
+      formData.append('birthday', birthday);
+      formData.append('addresses', JSON.stringify(addresses.filter(a => a.trim() !== '')));
+      
+      if (newPassword) {
+        formData.append('currentPassword', currentPassword);
+        formData.append('newPassword', newPassword);
       }
 
-      if (profileImage && !profileImage.startsWith('http')) {
-        const filename = profileImage.split('/').pop() || `profile-${Date.now()}.jpg`;
+      if (profileImage && profileImage !== orig.profileImage) {
+        const filename = profileImage.split('/').pop();
         const match = /\.(\w+)$/.exec(filename);
-        formData.append('profileImage', {
-          uri: profileImage,
-          name: filename,
-          type: match ? `image/${match[1]}` : 'image/jpeg'
-        });
+        const type = match ? `image/${match[1]}` : `image`;
+        formData.append('profileImage', { uri: profileImage, name: filename, type });
       }
 
-      const response = await fetch(`${API_BASE_URL}/users/profile`, {
-        method: 'PUT',
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData
+      const res = await axios.put(`${API_BASE_URL}/users/profile`, formData, {
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' } 
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Could not update profile.');
-      }
-
-      await SecureStore.setItemAsync('userInfo', JSON.stringify(data.user));
-      setPassword('');
-      setProfileImage(data.user.profileImage || null);
-      Toast.show({ type: 'success', text1: 'Profile Updated!', text2: 'Your changes have been saved.' });
-    } catch (e) {
-      Toast.show({ type: 'error', text1: 'Error', text2: e.message || 'Failed to update profile.' });
+      await SecureStore.setItemAsync('userInfo', JSON.stringify(res.data));
+      const nextProfileImage = res.data.profileImage || profileImage;
+      setOrig({ name, email, profileImage: nextProfileImage, phone, birthday, addresses: res.data.addresses?.length ? res.data.addresses : [''] });
+      setProfileImage(nextProfileImage);
+      setCurrentPassword(""); setNewPassword("");
+      Toast.show({ type: "success", text1: "Profile Updated!", text2: "Your changes have been saved." });
+    } catch (e) { 
+      console.log("UPDATE ERROR:", e.response?.data || e.message);
+      Toast.show({ type: "error", text1: "Error", text2: e.response?.data?.message || "Failed to update profile." }); 
     } finally {
       setIsLoading(false);
     }
   };
 
+  const pickImg = async (type) => {
+    const perm = type === 'cam' ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) return Toast.show({ type: "error", text1: "Permission Required" });
+    let res = type === 'cam' ? await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.5 }) : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], allowsEditing: true, aspect: [1, 1], quality: 0.5 });
+    if (!res.canceled) setProfileImage(res.assets[0].uri);
+  };
+  const showImgOpt = () => Alert.alert("Profile Picture", "Update your avatar", [{ text: "Take Photo", onPress: () => pickImg('cam') }, { text: "Gallery", onPress: () => pickImg('gal') }, { text: "Cancel", style: "cancel" }]);
+
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        <View style={styles.header}>
-          <IconButton icon="arrow-left" size={24} iconColor="#4A3B32" onPress={() => navigation.goBack()} style={styles.backBtn} />
-          <Text variant="titleLarge" style={styles.headerTitle}>Profile</Text>
-          <View style={{ width: 48 }} /> 
-        </View>
+        <View style={styles.header}><Text variant="titleLarge" style={styles.headerTitle}>My Profile</Text></View>
 
         {isGuest ? (
           <View style={styles.guestContainer}>
             <MaterialCommunityIcons name="account-circle-outline" size={80} color="#D2B48C" />
             <Text variant="titleLarge" style={styles.guestTitle}>Sign in to your profile</Text>
             <Text variant="bodyMedium" style={styles.guestSub}>Manage your details, track your preferences, and access exclusive rewards.</Text>
-            <Button mode="contained" buttonColor="#6F4E37" style={styles.loginBtn} onPress={() => navigation.navigate('Auth', { screen: 'Login' })}>
-              Log In or Sign Up
-            </Button>
+            <Button mode="contained" buttonColor="#6F4E37" style={styles.loginBtn} onPress={() => navigation.navigate('Auth', { screen: 'Login' })}>Log In or Sign Up</Button>
           </View>
         ) : (
           <View style={styles.content}>
-            <View style={styles.avatarContainer}>
-              <TouchableOpacity onPress={showImageOptions} activeOpacity={0.8}>
-                {profileImage ? <Avatar.Image size={110} source={{ uri: profileImage }} style={styles.avatarImage} /> : (
-                  <View style={styles.avatarPlaceholder}><MaterialCommunityIcons name="camera-plus" size={40} color="#888" /><Text style={styles.avatarText}>Add Photo</Text></View>
-                )}
-                <View style={styles.editBadge}><MaterialCommunityIcons name="pencil" size={18} color="#fff" /></View>
-              </TouchableOpacity>
+            <View style={styles.tabBar}>
+              <TouchableOpacity style={[styles.tab, activeTab === 'details' && styles.activeTab]} onPress={() => setActiveTab('details')}><Text style={activeTab === 'details' ? styles.activeTabText : styles.tabText}>Account Details</Text></TouchableOpacity>
+              <TouchableOpacity style={[styles.tab, activeTab === 'info' && styles.activeTab]} onPress={() => setActiveTab('info')}><Text style={activeTab === 'info' ? styles.activeTabText : styles.tabText}>Account Info</Text></TouchableOpacity>
             </View>
 
-            <TextInput label="Full Name" value={name} onChangeText={setName} mode="outlined" style={styles.input} outlineColor="#EBE1D7" activeOutlineColor="#6F4E37" left={<TextInput.Icon icon="account-outline" color="#888" />} />
-            <TextInput label="Email Address" value={email} onChangeText={setEmail} mode="outlined" style={styles.input} outlineColor="#EBE1D7" activeOutlineColor="#6F4E37" keyboardType="email-address" autoCapitalize="none" left={<TextInput.Icon icon="email-outline" color="#888" />} />
-            <TextInput label="Phone Number" value={phone} onChangeText={setPhone} mode="outlined" style={styles.input} outlineColor="#EBE1D7" activeOutlineColor="#6F4E37" keyboardType="phone-pad" left={<TextInput.Icon icon="phone-outline" color="#888" />} />
-            <TextInput label="Birthday (MM/DD/YYYY)" value={birthday} onChangeText={setBirthday} mode="outlined" style={styles.input} outlineColor="#EBE1D7" activeOutlineColor="#6F4E37" left={<TextInput.Icon icon="cake-variant-outline" color="#888" />} />
-            <TextInput label="Primary Address" value={address} onChangeText={setAddress} mode="outlined" style={styles.input} outlineColor="#EBE1D7" activeOutlineColor="#6F4E37" left={<TextInput.Icon icon="map-marker-outline" color="#888" />} />
-            <TextInput label="New Password (Optional)" value={password} onChangeText={setPassword} mode="outlined" style={styles.input} outlineColor="#EBE1D7" activeOutlineColor="#6F4E37" secureTextEntry={isPasswordSecure} left={<TextInput.Icon icon="lock-outline" color="#888" />} right={<TextInput.Icon icon={isPasswordSecure ? "eye-off" : "eye"} color="#888" onPress={() => setIsPasswordSecure(!isPasswordSecure)} />} />
+            {activeTab === 'details' ? (
+              <View>
+                <View style={styles.avatarContainer}>
+                  <TouchableOpacity onPress={showImgOpt} activeOpacity={0.8}>
+                    {profileImage ? <Avatar.Image size={110} source={{ uri: profileImage }} style={styles.avatarImage} /> : <View style={styles.avatarPlaceholder}><MaterialCommunityIcons name="camera-plus" size={40} color="#888" /><Text style={styles.avatarText}>Add Photo</Text></View>}
+                    <View style={styles.editBadge}><MaterialCommunityIcons name="pencil" size={18} color="#fff" /></View>
+                  </TouchableOpacity>
+                </View>
+                <TextInput label="Full Name / Username" value={name} onChangeText={setName} mode="outlined" style={styles.input} outlineColor="#EBE1D7" activeOutlineColor="#6F4E37" left={<TextInput.Icon icon="account-outline" color="#888" />} />
+                <TextInput label="Email Address" value={email} onChangeText={setEmail} mode="outlined" style={styles.input} outlineColor="#EBE1D7" activeOutlineColor="#6F4E37" keyboardType="email-address" autoCapitalize="none" left={<TextInput.Icon icon="email-outline" color="#888" />} />
+                <View style={{flexDirection: 'row', gap: 10}}>
+                  <TextInput label="Current Password" value={currentPassword} onChangeText={setCurrentPassword} mode="outlined" style={[styles.input, {flex: 1}]} outlineColor="#EBE1D7" activeOutlineColor="#6F4E37" secureTextEntry={isPasswordSecure} left={<TextInput.Icon icon="lock-outline" color="#888" />} />
+                  <TextInput label="New Password" value={newPassword} onChangeText={setNewPassword} mode="outlined" style={[styles.input, {flex: 1}]} outlineColor="#EBE1D7" activeOutlineColor="#6F4E37" secureTextEntry={isPasswordSecure} right={<TextInput.Icon icon={isPasswordSecure ? 'eye-off' : 'eye'} color="#888" onPress={() => setIsPasswordSecure(!isPasswordSecure)} />} />
+                </View>
+              </View>
+            ) : (
+              <View>
+                <TextInput label="Phone Number" value={phone} onChangeText={formatPhone} mode="outlined" style={styles.input} outlineColor="#EBE1D7" activeOutlineColor="#6F4E37" keyboardType="numeric" maxLength={11} left={<TextInput.Icon icon="phone-outline" color="#888" />} />
+                <TextInput label="Birthday (MM/DD/YYYY)" value={birthday} onChangeText={formatBday} mode="outlined" style={styles.input} outlineColor="#EBE1D7" activeOutlineColor="#6F4E37" keyboardType="numeric" maxLength={10} left={<TextInput.Icon icon="cake-variant-outline" color="#888" />} />
+                
+                {addresses.map((addr, index) => (
+                  <View key={index} style={styles.addressRow}>
+                    <TextInput label={`Address ${index + 1}`} value={addr} onChangeText={(txt) => { const a = [...addresses]; a[index] = txt; setAddresses(a); }} mode="outlined" style={[styles.input, {flex: 1, marginBottom: 0}]} outlineColor="#EBE1D7" activeOutlineColor="#6F4E37" left={<TextInput.Icon icon="map-marker-outline" color="#888" />} />
+                    {index > 0 && <IconButton icon="trash-can-outline" iconColor="#D32F2F" size={24} onPress={() => setAddresses(addresses.filter((_, i) => i !== index))} style={{marginTop: 5}} />}
+                  </View>
+                ))}
+                <Button mode="text" icon="plus" textColor="#6F4E37" onPress={() => setAddresses([...addresses, ""])} style={{alignSelf: 'flex-start', marginBottom: 15}}>Add Another Address</Button>
+              </View>
+            )}
 
-            <Button mode="contained" buttonColor="#6F4E37" style={styles.saveBtn} contentStyle={styles.saveBtnContent} labelStyle={styles.saveBtnLabel} onPress={handleUpdateProfile} loading={isLoading} disabled={isLoading}>
-              {isLoading ? 'Saving...' : 'Save Changes'}
-            </Button>
+            {hasChanges && (
+              <View style={styles.actionRow}>
+                <Button mode="outlined" textColor="#6F4E37" style={styles.cancelBtn} onPress={handleCancel} disabled={isLoading}>Cancel</Button>
+                <Button mode="contained" buttonColor="#6F4E37" style={styles.saveBtn} onPress={handleUpdateProfile} loading={isLoading} disabled={isLoading}>Save Changes</Button>
+              </View>
+            )}
           </View>
         )}
       </ScrollView>
     </KeyboardAvoidingView>
   );
-};
+}
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#FAF5F0" }, scrollContent: { flexGrow: 1, paddingTop: 40, paddingBottom: 40 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 10, marginBottom: 20 }, 
-  backBtn: { margin: 0 }, headerTitle: { fontWeight: 'bold', color: '#4A3B32' }, content: { flex: 1, paddingHorizontal: 25 },
-  avatarContainer: { alignItems: "center", marginBottom: 35 },
-  avatarPlaceholder: { width: 110, height: 110, borderRadius: 55, backgroundColor: "#EBE1D7", justifyContent: "center", alignItems: "center", borderWidth: 3, borderColor: "#fff", elevation: 4, shadowOpacity: 0.15, shadowRadius: 5 },
-  avatarImage: { backgroundColor: "#EBE1D7", borderWidth: 3, borderColor: "#fff" }, avatarText: { fontSize: 12, color: "#888", marginTop: 5, fontWeight: "bold" },
-  editBadge: { position: "absolute", bottom: 0, right: 0, backgroundColor: "#6F4E37", width: 36, height: 36, borderRadius: 18, justifyContent: "center", alignItems: "center", borderWidth: 3, borderColor: "#FAF5F0" },
-  input: { backgroundColor: "#fff", marginBottom: 15 }, saveBtn: { borderRadius: 12, marginTop: 15 }, saveBtnContent: { height: 55 }, saveBtnLabel: { fontSize: 16, fontWeight: "bold" },
+  container: { flex: 1, backgroundColor: '#FAF5F0' }, scrollContent: { flexGrow: 1, paddingTop: 60, paddingBottom: 40 },
+  header: { alignItems: 'center', marginBottom: 20 }, headerTitle: { fontWeight: 'bold', color: '#4A3B32', fontSize: 22 },
+  content: { flex: 1, paddingHorizontal: 25 },
+  tabBar: { flexDirection: 'row', backgroundColor: '#EBE1D7', borderRadius: 25, padding: 4, marginBottom: 25 },
+  tab: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 20 },
+  activeTab: { backgroundColor: '#6F4E37', elevation: 2 },
+  tabText: { color: '#888', fontWeight: 'bold' }, activeTabText: { color: '#fff', fontWeight: 'bold' },
+  avatarContainer: { alignItems: 'center', marginBottom: 25 },
+  avatarPlaceholder: { width: 110, height: 110, borderRadius: 55, backgroundColor: '#EBE1D7', justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: '#fff' },
+  avatarImage: { backgroundColor: '#EBE1D7', borderWidth: 3, borderColor: '#fff' }, avatarText: { fontSize: 12, color: '#888', marginTop: 5, fontWeight: 'bold' },
+  editBadge: { position: 'absolute', bottom: 0, right: 0, backgroundColor: '#6F4E37', width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: '#FAF5F0' },
+  input: { backgroundColor: '#fff', marginBottom: 15 }, addressRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 15 },
+  actionRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10, gap: 10 },
+  cancelBtn: { flex: 1, borderColor: '#6F4E37', borderRadius: 10 }, saveBtn: { flex: 1, borderRadius: 10 },
   guestContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 30, marginTop: 40 },
-  guestTitle: { fontWeight: 'bold', color: '#4A3B32', marginTop: 15 },
-  guestSub: { color: '#888', textAlign: 'center', marginTop: 8, marginBottom: 30, lineHeight: 20 },
-  loginBtn: { borderRadius: 25, width: '100%', paddingVertical: 6, elevation: 3 }
+  guestTitle: { fontWeight: 'bold', color: '#4A3B32', marginTop: 15 }, guestSub: { color: '#888', textAlign: 'center', marginTop: 8, marginBottom: 30, lineHeight: 20 }, loginBtn: { borderRadius: 25, width: '100%', paddingVertical: 6 }
 });
-
-export default ProfilePage;

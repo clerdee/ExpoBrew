@@ -3,35 +3,41 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 require('dotenv').config();
 
-// Import our routes
+const User = require('./models/User');
 const authRoutes = require('./routes/authRoutes'); 
 const productRoutes = require('./routes/productRoutes');
 const userRoutes = require('./routes/userRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const reviewRoutes = require('./routes/reviewRoutes');
 
 const app = express();
 
-app.use(express.json()); 
-
-app.use(cors());
-
-// Middleware
 app.use(cors());
 app.use(express.json()); 
 
 mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log("✅ Connected to MongoDB"))
+  .then(async () => {
+    console.log("✅ Connected to MongoDB");
+    
+    await User.updateMany({}, { $set: { expoPushToken: null, expoPushTokens: [] } });
+    console.log("🧹 Cleared all old conflicting push tokens!");
+  })
   .catch((err) => console.log("❌ MongoDB connection error:", err));
+
+app.get('/', (req, res) => {
+  res.send('ExpoBrew API is running!');
+});
 
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/reviews', reviewRoutes);
 
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });

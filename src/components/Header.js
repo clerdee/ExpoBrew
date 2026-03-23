@@ -5,14 +5,21 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import axios from "axios";
 import { API_BASE_URL } from "../configs/config";
 import { useNavigation } from "@react-navigation/native"; 
-import * as SecureStore from 'expo-secure-store'; // <-- ADDED
+import * as SecureStore from 'expo-secure-store';
 
 const Header = ({ user, cartItemCount = 0, onAvatarPress, onCartPress }) => {
   const navigation = useNavigation();
   const [unreadCount, setUnreadCount] = useState(0);
   const isLoggedIn = !!user;
 
-  useEffect(() => { if (isLoggedIn) fetchUnreadCount(); }, [isLoggedIn]);
+  useEffect(() => {
+    let interval;
+    if (isLoggedIn) {
+      fetchUnreadCount();
+      interval = setInterval(fetchUnreadCount, 5000);
+    }
+    return () => clearInterval(interval);
+  }, [isLoggedIn]);
 
   const fetchUnreadCount = async () => {
     try {
@@ -53,13 +60,20 @@ const Header = ({ user, cartItemCount = 0, onAvatarPress, onCartPress }) => {
 };
 
 const styles = StyleSheet.create({
-  gWrapper: { marginHorizontal: -20, marginTop: -50, marginBottom: 25, elevation: 5 }, gContainer: { backgroundColor: '#EBE1D7', paddingTop: 85, paddingBottom: 40, paddingHorizontal: 25, flexDirection: 'row', overflow: 'hidden', borderBottomLeftRadius: 40, borderBottomRightRadius: 40 },
-  gContent: { zIndex: 2, flex: 1 }, gGreet: { fontWeight: "900", color: "#4A3B32", marginBottom: 20, fontSize: 28, lineHeight: 34 },
+  gWrapper: { marginHorizontal: -20, marginTop: -50, marginBottom: 25, elevation: 5 }, 
+  gContainer: { backgroundColor: '#EBE1D7', paddingTop: 85, paddingBottom: 40, paddingHorizontal: 25, flexDirection: 'row', overflow: 'hidden', borderBottomLeftRadius: 40, borderBottomRightRadius: 40 },
+  gContent: { zIndex: 2, flex: 1 }, 
+  gGreet: { fontWeight: "900", color: "#4A3B32", marginBottom: 20, fontSize: 28, lineHeight: 34 },
   sBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#6F4E37', paddingHorizontal: 22, paddingVertical: 12, borderRadius: 25, alignSelf: 'flex-start' },
-  sText: { color: '#fff', fontWeight: 'bold', marginLeft: 8 }, gDeco: { position: 'absolute', right: -25, bottom: -30, transform: [{ rotate: '-15deg' }] },
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }, hLeft: { flexDirection: "row", alignItems: "center" }, hRight: { flexDirection: "row", alignItems: "center" },
-  greet: { color: "#888", fontSize: 12 }, uName: { fontWeight: "bold", color: "#4A3B32", fontSize: 18 }, iCont: { position: "relative", marginLeft: 5 },
-  nBadge: { position: "absolute", top: 4, right: 6, backgroundColor: "#E74C3C", color: "#FFF", fontWeight: "bold" }, // <-- UPDATED STYLE
+  sText: { color: '#fff', fontWeight: 'bold', marginLeft: 8 }, 
+  gDeco: { position: 'absolute', right: -25, bottom: -30, transform: [{ rotate: '-15deg' }] },
+  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }, 
+  hLeft: { flexDirection: "row", alignItems: "center" }, 
+  hRight: { flexDirection: "row", alignItems: "center" },
+  greet: { color: "#888", fontSize: 12 }, 
+  uName: { fontWeight: "bold", color: "#4A3B32", fontSize: 18 }, 
+  iCont: { position: "relative", marginLeft: 5 },
+  nBadge: { position: "absolute", top: 4, right: 6, backgroundColor: "#E74C3C", color: "#FFF", fontWeight: "bold" },
   cBadge: { position: "absolute", top: 5, right: 5, backgroundColor: "#6F4E37" },
 });
 
